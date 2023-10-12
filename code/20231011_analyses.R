@@ -89,75 +89,75 @@ df$average_loads_ESBL_Ec <- as.numeric(ifelse(is.na(df$esblEc_loads_a) | is.na(d
                                                 # rowMeans(df[,c("counts_ESBL_Ec_1", "counts_ESBL_Ec_2")], na.rm = TRUE)))
 
 
-##overall median and iqrr of CFUs/mL of ESBL and total E. coli
-median(df$average_counts_tot_Ec, na.rm=T)
-quantile(df$average_counts_tot_Ec, na.rm=T)
-median(df$average_counts_ESBL_Ec, na.rm=T)
-quantile(df$average_counts_ESBL_Ec, na.rm=T)
-min(df$average_counts_tot_Ec, na.rm=T)
-max(df$average_counts_tot_Ec, na.rm=T)
-min(df$average_counts_ESBL_Ec, na.rm=T)
-max(df$average_counts_ESBL_Ec, na.rm=T)
+  ##overall median and iqrr of CFUs/mL of ESBL and total E. coli
+    #median(df$average_counts_tot_Ec, na.rm=T)
+    #quantile(df$average_counts_tot_Ec, na.rm=T)
+    #median(df$average_counts_ESBL_Ec, na.rm=T)
+    #quantile(df$average_counts_ESBL_Ec, na.rm=T)
+    #min(df$average_counts_tot_Ec, na.rm=T)
+    #max(df$average_counts_tot_Ec, na.rm=T)
+    #min(df$average_counts_ESBL_Ec, na.rm=T)
+    #max(df$average_counts_ESBL_Ec, na.rm=T)
+  
+    #df_alt = df %>% filter(wwtp == "ARA Altenrhein")
+    #median(df_alt$average_counts_tot_Ec, na.rm=T)
+    #quantile(df_alt$average_counts_tot_Ec, na.rm=T)
+    #median(df_alt$average_counts_ESBL_Ec, na.rm=T)
+    #quantile(df_alt$average_counts_ESBL_Ec, na.rm=T)
+    #min(df_alt$average_counts_tot_Ec, na.rm=T)
+    #max(df_alt$average_counts_tot_Ec, na.rm=T)
+    #min(df_alt$average_counts_ESBL_Ec, na.rm=T)
+    #max(df_alt$average_counts_ESBL_Ec, na.rm=T)
 
-df_alt = df %>% filter(wwtp == "ARA Altenrhein")
-median(df_alt$average_counts_tot_Ec, na.rm=T)
-quantile(df_alt$average_counts_tot_Ec, na.rm=T)
-median(df_alt$average_counts_ESBL_Ec, na.rm=T)
-quantile(df_alt$average_counts_ESBL_Ec, na.rm=T)
-min(df_alt$average_counts_tot_Ec, na.rm=T)
-max(df_alt$average_counts_tot_Ec, na.rm=T)
-min(df_alt$average_counts_ESBL_Ec, na.rm=T)
-max(df_alt$average_counts_ESBL_Ec, na.rm=T)
-
-df_chu = df %>% filter(wwtp == "ARA Chur")
-median(df_chu$average_counts_tot_Ec, na.rm=T)
-quantile(df_chu$average_counts_tot_Ec, na.rm=T)
-median(df_chu$average_counts_ESBL_Ec, na.rm=T)
-quantile(df_chu$average_counts_ESBL_Ec, na.rm=T)
-min(df_chu$average_counts_tot_Ec, na.rm=T)
-max(df_chu$average_counts_tot_Ec, na.rm=T)
-min(df_chu$average_counts_ESBL_Ec, na.rm=T)
-max(df_chu$average_counts_ESBL_Ec, na.rm=T)
-
-df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
-median(df_gen$average_counts_tot_Ec, na.rm=T)
-quantile(df_gen$average_counts_tot_Ec, na.rm=T)
-median(df_gen$average_counts_ESBL_Ec, na.rm=T)
-quantile(df_gen$average_counts_ESBL_Ec, na.rm=T)
-min(df_gen$average_counts_tot_Ec, na.rm=T)
-max(df_gen$average_counts_tot_Ec, na.rm=T)
-min(df_gen$average_counts_ESBL_Ec, na.rm=T)
-max(df_gen$average_counts_ESBL_Ec, na.rm=T)
-
-df_zur = df %>% filter(wwtp == "ARA Werdhölzli Zürich")
-median(df_zur$average_counts_tot_Ec, na.rm=T)
-quantile(df_zur$average_counts_tot_Ec, na.rm=T)
-median(df_zur$average_counts_ESBL_Ec, na.rm=T)
-quantile(df_zur$average_counts_ESBL_Ec, na.rm=T)
-min(df_zur$average_counts_tot_Ec, na.rm=T)
-max(df_zur$average_counts_tot_Ec, na.rm=T)
-min(df_zur$average_counts_ESBL_Ec, na.rm=T)
-max(df_zur$average_counts_ESBL_Ec, na.rm=T)
-
-df_lug = df %>% filter(wwtp == "IDA CDA Lugano")
-median(df_lug$average_counts_tot_Ec, na.rm=T)
-quantile(df_lug$average_counts_tot_Ec, na.rm=T)
-median(df_lug$average_counts_ESBL_Ec, na.rm=T)
-quantile(df_lug$average_counts_ESBL_Ec, na.rm=T)
-min(df_lug$average_counts_tot_Ec, na.rm=T)
-max(df_lug$average_counts_tot_Ec, na.rm=T)
-min(df_lug$average_counts_ESBL_Ec, na.rm=T)
-max(df_lug$average_counts_ESBL_Ec, na.rm=T)
-
-df_sen = df %>% filter(wwtp == "ARA Sensetal Laupen")
-median(df_sen$average_counts_tot_Ec, na.rm=T)
-quantile(df_sen$average_counts_tot_Ec, na.rm=T)
-median(df_sen$average_counts_ESBL_Ec, na.rm=T)
-quantile(df_sen$average_counts_ESBL_Ec, na.rm=T)
-min(df_sen$average_counts_tot_Ec, na.rm=T)
-max(df_sen$average_counts_tot_Ec, na.rm=T)
-min(df_sen$average_counts_ESBL_Ec, na.rm=T)
-max(df_sen$average_counts_ESBL_Ec, na.rm=T)
+    #df_chu = df %>% filter(wwtp == "ARA Chur")
+    #median(df_chu$average_counts_tot_Ec, na.rm=T)
+    #quantile(df_chu$average_counts_tot_Ec, na.rm=T)
+    #median(df_chu$average_counts_ESBL_Ec, na.rm=T)
+    #quantile(df_chu$average_counts_ESBL_Ec, na.rm=T)
+    #min(df_chu$average_counts_tot_Ec, na.rm=T)
+    #max(df_chu$average_counts_tot_Ec, na.rm=T)
+    #min(df_chu$average_counts_ESBL_Ec, na.rm=T)
+    #max(df_chu$average_counts_ESBL_Ec, na.rm=T)
+    
+    #df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
+    #median(df_gen$average_counts_tot_Ec, na.rm=T)
+    #quantile(df_gen$average_counts_tot_Ec, na.rm=T)
+    #median(df_gen$average_counts_ESBL_Ec, na.rm=T)
+    #quantile(df_gen$average_counts_ESBL_Ec, na.rm=T)
+    #min(df_gen$average_counts_tot_Ec, na.rm=T)
+    #max(df_gen$average_counts_tot_Ec, na.rm=T)
+    #min(df_gen$average_counts_ESBL_Ec, na.rm=T)
+    #max(df_gen$average_counts_ESBL_Ec, na.rm=T)
+    
+    #df_zur = df %>% filter(wwtp == "ARA Werdhölzli Zürich")
+    #median(df_zur$average_counts_tot_Ec, na.rm=T)
+    #quantile(df_zur$average_counts_tot_Ec, na.rm=T)
+    #median(df_zur$average_counts_ESBL_Ec, na.rm=T)
+    #quantile(df_zur$average_counts_ESBL_Ec, na.rm=T)
+    #min(df_zur$average_counts_tot_Ec, na.rm=T)
+    #max(df_zur$average_counts_tot_Ec, na.rm=T)
+    #min(df_zur$average_counts_ESBL_Ec, na.rm=T)
+    #max(df_zur$average_counts_ESBL_Ec, na.rm=T)
+    
+    #df_lug = df %>% filter(wwtp == "IDA CDA Lugano")
+    #median(df_lug$average_counts_tot_Ec, na.rm=T)
+    #quantile(df_lug$average_counts_tot_Ec, na.rm=T)
+    #median(df_lug$average_counts_ESBL_Ec, na.rm=T)
+    #quantile(df_lug$average_counts_ESBL_Ec, na.rm=T)
+    #min(df_lug$average_counts_tot_Ec, na.rm=T)
+    #max(df_lug$average_counts_tot_Ec, na.rm=T)
+    #min(df_lug$average_counts_ESBL_Ec, na.rm=T)
+    #max(df_lug$average_counts_ESBL_Ec, na.rm=T)
+    
+    #df_sen = df %>% filter(wwtp == "ARA Sensetal Laupen")
+    #median(df_sen$average_counts_tot_Ec, na.rm=T)
+    #quantile(df_sen$average_counts_tot_Ec, na.rm=T)
+    #median(df_sen$average_counts_ESBL_Ec, na.rm=T)
+    #quantile(df_sen$average_counts_ESBL_Ec, na.rm=T)
+    #min(df_sen$average_counts_tot_Ec, na.rm=T)
+    #max(df_sen$average_counts_tot_Ec, na.rm=T)
+    #min(df_sen$average_counts_ESBL_Ec, na.rm=T)
+    #max(df_sen$average_counts_ESBL_Ec, na.rm=T)
 
 ##overall means (log10Mean) and sd (log10Sd) of the above metrics
 mean(df$average_ESBL_Ec, na.rm=T)
@@ -173,149 +173,111 @@ sd(log10(df$average_loads_ESBL_Ec), na.rm=T)
 median(df$average_ESBL_Ec, na.rm=T)
 quantile(df$average_ESBL_Ec, na.rm=T)
 
-mean(log10(df$average_loads_tot_Ec), na.rm=T))
-sd(log10(df$average_loads_tot_Ec), na.rm=T))
+mean(log10(df$average_loads_tot_Ec), na.rm=T)
+sd(log10(df$average_loads_tot_Ec), na.rm=T)
 
-mean(log10(df$average_loads_ESBL_Ec), na.rm=T))
-sd(log10(df$average_loads_ESBL_Ec), na.rm=T))
+mean(log10(df$average_loads_ESBL_Ec), na.rm=T)
+sd(log10(df$average_loads_ESBL_Ec), na.rm=T)
+
 
 #11a) Plot observations of ESBL-Ec grouped by month and wwtp 
 #percentage_ESBL_Ec
-per=ggplot(data=df) +
-  geom_boxplot(aes(y=(average_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
-  geom_point(aes(y=(average_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"))) +
-  facet_wrap(wwtp~., ncol=2) +
-  theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1), axis.title.y=element_text(size=11),legend.position="bottom") +
-  ylab(expression(paste("Proportion of ESBL-Ec (%)"))) +
-  scale_color_manual(name="", values = c("Single replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
-  scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
-  scale_y_continuous(breaks = c(1, 2, 3, 4, 5))+
-  xlab("")
+    #per=ggplot(data=df) +
+    #geom_boxplot(aes(y=(average_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
+    #geom_point(aes(y=(average_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"))) +
+    #facet_wrap(wwtp~., ncol=2) +
+    #theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1), axis.title.y=element_text(size=11),legend.position="bottom") +
+    #ylab(expression(paste("Proportion of ESBL-Ec (%)"))) +
+    #scale_color_manual(name="", values = c("Single replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
+    #scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
+    #scale_y_continuous(breaks = c(1, 2, 3, 4, 5))+
+    #xlab("")
 
 per1=ggplot(data=df) +
   geom_boxplot(aes(y=(average_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
   geom_point(aes(y=(average_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"))) +
   facet_wrap(wwtp~., ncol=1) +
   theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1), axis.title.y=element_text(size=11),legend.position="bottom") +
-  ylab(expression(paste("Proportion of ESBL-Ec (%)"))) +
+  ylab(expression(paste("Percentage of ESBL- ", italic("E. coli"), " (%)"))) +
   scale_color_manual(name="", values = c("Single replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
   scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
   scale_y_continuous(breaks = c(1, 2, 3, 4, 5))+
   xlab("")
 
 #loads_ESBL_Ec
-lre=ggplot(data=df) +
-  geom_boxplot(aes(y=log10(average_loads_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
-  geom_point(aes(y=log10(average_loads_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(esblEc_loads_a) | is.na(esblEc_loads_b), "Unique replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), size=1.5) +
-  facet_wrap(wwtp~., ncol=3) +
-  theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1, size=7), axis.title.y=element_text(size=9),legend.position="none") +
-  ylab(expression(paste("log loads ESBL-Ec (CFUs/day/person)"))) +
-  scale_color_manual(name="", values = c("Unique replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
-  scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
-  scale_y_continuous(breaks = c(7, 8, 9), labels=c("7" = expression(10^{7}), "8" =expression(10^{8}),
-                                                   "9" = expression(10^{9})))+
-  xlab("")
+    #lre=ggplot(data=df) +
+    #geom_boxplot(aes(y=log10(average_loads_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
+    #geom_point(aes(y=log10(average_loads_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(esblEc_loads_a) | is.na(esblEc_loads_b), "Unique replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), size=1.5) +
+    #facet_wrap(wwtp~., ncol=3) +
+    #theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1, size=7), axis.title.y=element_text(size=9),legend.position="none") +
+    #ylab(expression(paste("loads ESBL- ", italic("E. coli"), " log10(CFUs/(person-day))"))) +
+    #scale_color_manual(name="", values = c("Unique replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
+    #scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
+    #scale_y_continuous(breaks = c(7, 8, 9), labels=c("7" = expression(10^{7}), "8" =expression(10^{8}),"9" = expression(10^{9})))+
+    #xlab("")
 
 lre1=ggplot(data=df) +
   geom_boxplot(aes(y=log10(average_loads_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
   geom_point(aes(y=log10(average_loads_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(esblEc_loads_a) | is.na(esblEc_loads_b), "Unique replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), size=1.5) +
   facet_wrap(wwtp~., ncol=1) +
   theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1), axis.title.y=element_text(size=11),legend.position="none") +
-  ylab(expression(paste("log loads ESBL-Ec (CFUs/day/person)"))) +
+  ylab(expression(paste("loads ESBL- ", italic("E. coli"), " log10(CFUs/(person-day))"))) +
   scale_color_manual(name="", values = c("Unique replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
   scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
   scale_y_continuous(breaks = c(7, 8, 9), labels=c("7" = expression(10^{7}), "8" =expression(10^{8}),
                                                    "9" = expression(10^{9})))+
   xlab("")
+
 #loads_tot_Ec
-lto=ggplot(data=df) +
-  geom_boxplot(aes(y=log10(average_loads_tot_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
-  geom_point(aes(y=log10(average_loads_tot_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(totalEc_loads_a) | is.na(totalEc_loads_b), "Unique replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), size=1.5) +
-  facet_wrap(wwtp~., ncol=3) +
-  theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1, size=7), axis.title.y=element_text(size=9), legend.position="none") +
-  ylab(expression(paste("log loads tot-Ec (CFUs/day/person)"))) +
-  scale_color_manual(name="", values = c("Unique replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
-  scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
-  scale_y_continuous(breaks = c(9, 10, 11), labels=c("9" = expression(10^{9}), "10" =expression(10^{10}),
-                                                     "11" = expression(10^{11})))+
-  xlab("")
+    #lto=ggplot(data=df) +
+    #geom_boxplot(aes(y=log10(average_loads_tot_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
+    #geom_point(aes(y=log10(average_loads_tot_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(totalEc_loads_a) | is.na(totalEc_loads_b), "Unique replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), size=1.5) +
+    #facet_wrap(wwtp~., ncol=3) +
+    #theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1, size=7), axis.title.y=element_text(size=9), legend.position="none") +
+    #ylab(expression(paste("log loads tot-Ec (CFUs/day/person)"))) +
+    #scale_color_manual(name="", values = c("Unique replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
+    #scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
+    #scale_y_continuous(breaks = c(9, 10, 11), labels=c("9" = expression(10^{9}), "10" =expression(10^{10}), "11" = expression(10^{11})))+
+    #xlab("")
 
 lto1=ggplot(data=df) +
   geom_boxplot(aes(y=log10(average_loads_tot_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
   geom_point(aes(y=log10(average_loads_tot_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(totalEc_loads_a) | is.na(totalEc_loads_b), "Unique replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), size=1.5) +
   facet_wrap(wwtp~., ncol=1) +
   theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1), axis.title.y=element_text(size=11), legend.position="none") +
-  ylab(expression(paste("log loads tot-Ec (CFUs/day/person)"))) +
+  ylab(expression(paste("loads total ", italic("E. coli"), " log10(CFUs/(person-day))"))) +
   scale_color_manual(name="", values = c("Unique replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
   scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
   scale_y_continuous(breaks = c(9, 10, 11), labels=c("9" = expression(10^{9}), "10" =expression(10^{10}),
                                                      "11" = expression(10^{11})))+
   xlab("")
 
-ggarrange(per, ggarrange(lto, lre, ncol = 1, labels = c("B", "C")), 
-          labels = c("A",""), ncol = 2)
+    #ggarrange(per, ggarrange(lto, lre, ncol = 1, labels = c("B", "C")), labels = c("A",""), ncol = 2)
 
 ggarrange(per1, lto1, lre1, ncol = 3, labels = c("A","B", "C"), common.legend = TRUE)
 
-###ESBL-Ec to compare between seasons------
-#percentage_ESBL_Ec
-m_o = c("STEP d'Aïre Genève", "IDA CDA Lugano","ARA Werdhölzli Zürich","ARA Altenrhein", "ARA Chur", "ARA Sensetal Laupen")
-df$wwtp <- factor(df$wwtp, levels = m_o)
-
-perpl=ggplot(data=df) +
-  geom_boxplot(aes(y=(average_ESBL_Ec), x=reorder(season_year, date)), outlier.colour = NA, outlier.shape = NA) +
-  geom_point(aes(y=(average_ESBL_Ec), x=reorder(season_year, date),
-                 color = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"), 
-                 shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")),
-             position=position_jitter(width=0.1), size=1.9,alpha=0.6) +
-  theme(axis.text.x=element_text(angle=20, vjust=0.8, hjust=0.9, colour = "black"), axis.title.y=element_text(size=8.5),axis.text.y=element_text(colour="black"), legend.position="bottom") +
-  ylab(expression(paste("Percentage of ESBL-Ec (%)"))) +
-  scale_color_manual(name="", values = c("Single replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
-  scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
-  scale_y_continuous(breaks = c(1, 2, 3, 4,5))+
-  xlab("")
-
-#Size of text for the 2years time serie.
-perpl=ggplot(data=df) +
-  geom_boxplot(aes(y=(average_ESBL_Ec), x=reorder(season_year, date), fill=wwtp), outlier.colour = NA, outlier.shape = NA) +
-  #geom_point(aes(y=(average_carba_Ec), x=reorder(season_year, date), 
-  #color = ifelse(is.na(percentage_carba_Ec1) | is.na(percentage_carba_Ec2), "Single replicate", "Averaged on two replicates"), 
-  #shape = ifelse(is.na(percentage_carba_Ec1) | is.na(percentage_carba_Ec2), "Single replicate", "Averaged on two replicates")),
-  #position=position_jitter(width=0.1), size=1.9,alpha=0.6) +
-  theme_minimal()+
-  theme(axis.text.x=element_text(size=20, angle=20,vjust=0.8, hjust=0.9,colour="black"),axis.text.y=element_text(size=20, colour="black"), axis.title.y=element_text(size=22),
-        legend.position=c(0.8,0.8), legend.title=element_text(size=22), legend.text=element_text(size=18),
-        legend.key.size = unit(1, 'cm'))+
-  ylab(expression(paste("Percentage of ESBL-Ec/total-Ec (%)"))) +
-  scale_color_manual(name="", values = c("Single replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
-  scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
-  #scale_y_continuous(breaks = c(1, 2, 3, 4,5))+
-  ylim(0,4)+
-  xlab("")+
-  guides(fill=guide_legend(title="Wastewater treatment plant"))
-
-#Size of text for the 1year time serie.
-perpl=ggplot(data=df) +
-  geom_boxplot(aes(y=(average_ESBL_Ec), x=reorder(season_year, date), fill=wwtp), outlier.colour = NA, outlier.shape = NA) +
-  #geom_point(aes(y=(average_carba_Ec), x=reorder(season_year, date), 
-  #color = ifelse(is.na(percentage_carba_Ec1) | is.na(percentage_carba_Ec2), "Single replicate", "Averaged on two replicates"), 
-  #shape = ifelse(is.na(percentage_carba_Ec1) | is.na(percentage_carba_Ec2), "Single replicate", "Averaged on two replicates")),
-  #position=position_jitter(width=0.1), size=1.9,alpha=0.6) +
-  theme_minimal()+
-  theme(axis.text.x=element_text(size=20, colour="black"),axis.text.y=element_text(size=20, colour="black"), axis.title.y=element_text(size=22),
-        legend.position=c(0.8,0.8), legend.title=element_text(size=22), legend.text=element_text(size=18),
-        legend.key.size = unit(1, 'cm'))+
-  ylab(expression(paste("Percentage of ESBL-Ec/total-Ec (%)"))) +
-  scale_color_manual(name="", values = c("Single replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
-  scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
-  #scale_y_continuous(breaks = c(1, 2, 3, 4,5))+
-  ylim(0,4)+
-  xlab("")+
-  guides(fill=guide_legend(title="Wastewater treatment plant"))
-
 ###ESBL-Ec to compare between wwtps------
 #percentage_ESBL_Ec
-m_o = c("STEP d'Aïre Genève", "IDA CDA Lugano","ARA Werdhölzli Zürich","ARA Altenrhein", "ARA Chur", "ARA Sensetal Laupen")
+#calculate median in each WWTP 
+df_sen = df %>% filter(wwtp == "ARA Sensetal Laupen")
+median(df_sen$average_ESBL_Ec, na.rm = T)
+
+df_lug = df %>% filter(wwtp == "IDA CDA Lugano")
+median(df_lug$average_ESBL_Ec, na.rm = T)
+
+df_alt = df %>% filter(wwtp == "ARA Altenrhein")
+median(df_alt$average_ESBL_Ec, na.rm = T)
+
+df_chu = df %>% filter(wwtp == "ARA Chur")
+median(df_chu$average_ESBL_Ec, na.rm = T)
+
+df_zur = df %>% filter(wwtp == "ARA Werdhölzli Zürich")
+median(df_zur$average_ESBL_Ec, na.rm = T)
+
+df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
+median(df_gen$average_ESBL_Ec, na.rm = T)
+
+m_o = c("STEP d'Aïre Genève", "IDA CDA Lugano","ARA Werdhölzli Zürich","ARA Altenrhein", "ARA Chur", "ARA Sensetal Laupen") #ordering WWTPs from highest to lowest percentage.
 df$wwtp <- factor(df$wwtp, levels = m_o)
 
 perpl=ggplot(data=df) +
@@ -325,27 +287,27 @@ perpl=ggplot(data=df) +
                  shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")),
              position=position_jitter(width=0.1), size=1.9,alpha=0.6) +
   theme(axis.text.x=element_text(angle=20, vjust=0.8, hjust=0.9, colour = "black"), axis.title.y=element_text(size=8.5),axis.text.y=element_text(colour="black"), legend.position="bottom") +
-  ylab(expression(paste("Percentage of ESBL-Ec (%)"))) +
+  ylab(expression(paste("Percentage of ESBL- ", italic("E. coli"), " (%)"))) +
   scale_color_manual(name="", values = c("Single replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
   scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
   scale_y_continuous(breaks = c(1, 2, 3, 4,5))+
   xlab("")
 
 #loads_ESBL_Ec
-df_sen = df %>% filter(wwtp == "ARA Sensetal Laupen")
+#calculate median in each WWTP 
 median(df_sen$average_loads_ESBL_Ec, na.rm = T)
 
-df_chu = df %>% filter(wwtp == "ARA Chur")
+median(df_lug$average_loads_ESBL_Ec, na.rm = T)
+
+median(df_alt$average_loads_ESBL_Ec, na.rm = T)
+
 median(df_chu$average_loads_ESBL_Ec, na.rm = T)
 
-df_zur = df %>% filter(wwtp == "ARA Werdhölzli Zürich")
 median(df_zur$average_loads_ESBL_Ec, na.rm = T)
 
-df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
 median(df_gen$average_loads_ESBL_Ec, na.rm = T)
 
-m_t = c("ARA Altenrhein","ARA Werdhölzli Zürich","STEP d'Aïre Genève", "ARA Sensetal Laupen", "ARA Chur", "IDA CDA Lugano")
-df$wwtp <- factor(df$wwtp, levels = m_t)
+m_t = c("ARA Altenrhein","ARA Werdhölzli Zürich","STEP d'Aïre Genève", "ARA Sensetal Laupen", "ARA Chur", "IDA CDA Lugano") #ordering WWTPs from highest to lowest ESBL-Ec loads
 
 lrepl=ggplot(data=df) +
   geom_boxplot(aes(y=log10(average_loads_ESBL_Ec), x=wwtp), outlier.colour = NA, outlier.shape = NA) +
@@ -354,7 +316,7 @@ lrepl=ggplot(data=df) +
                  shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), 
             position=position_jitter(width=0.1), size=1.9,alpha=0.6) +
   theme(axis.text.x=element_text(angle=20, vjust=0.8, hjust=0.9, colour = "black"), axis.title.y=element_text(size=8.5),axis.text.y=element_text(colour="black"), legend.position="none") +
-  ylab(expression(paste("loads ESBL-Ec log10(CFUs/(person-day))"))) +
+  ylab(expression(paste("loads ESBL- ", italic("E. coli"), " log10(CFUs/(person-day))"))) +
   scale_color_manual(name="", values = c("Unique replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
   scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
   scale_y_continuous(breaks = c(7, 8, 9), labels=c("7" = expression(10^{7}), "8" =expression(10^{8}),
@@ -362,20 +324,21 @@ lrepl=ggplot(data=df) +
   xlab("")
 
 #loads_tot_Ec
-df_sen = df %>% filter(wwtp == "ARA Sensetal Laupen")
+#calculate median in each WWTP 
 median(df_sen$average_loads_tot_Ec, na.rm = T)
 
-df_chu = df %>% filter(wwtp == "ARA Chur")
+median(df_lug$average_loads_tot_Ec, na.rm = T)
+
+median(df_alt$average_loads_tot_Ec, na.rm = T)
+
 median(df_chu$average_loads_tot_Ec, na.rm = T)
 
-df_zur = df %>% filter(wwtp == "ARA Werdhölzli Zürich")
 median(df_zur$average_loads_tot_Ec, na.rm = T)
 
-df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
 median(df_gen$average_loads_tot_Ec, na.rm = T)
 
-m_l = c("ARA Altenrhein", "ARA Chur","ARA Sensetal Laupen","ARA Werdhölzli Zürich", "STEP d'Aïre Genève", "IDA CDA Lugano")
-df$wwtp <- factor(df$wwtp, levels = m_l)
+m_l = c("ARA Altenrhein", "ARA Chur","ARA Sensetal Laupen","ARA Werdhölzli Zürich", "STEP d'Aïre Genève", "IDA CDA Lugano") #ordering WWTPs from highest to lowest total Ec loads
+
 ltopl=ggplot(data=df) +
   geom_boxplot(aes(y=log10(average_loads_tot_Ec), x=wwtp), outlier.colour = NA, outlier.shape = NA) +
   geom_point(aes(y=log10(average_loads_tot_Ec), x=wwtp, 
