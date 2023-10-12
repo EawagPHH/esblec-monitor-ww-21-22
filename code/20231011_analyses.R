@@ -99,245 +99,53 @@ df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
 
 
 ##Calculate overall statistics------------------------
-            # Define a function to calculate mean, standard deviation, median, and quantiles
-            calculate_stats <- function(data, log_transform = FALSE) {
-              if (log_transform) {
-                data <- log10(data)
-                unit <- "log10"
-              } else {
-                unit <- ""
-              }
+# Define a function to calculate mean, standard deviation, median, and quantiles
+calculate_stats <- function(data, log_transform = FALSE) {
+if (log_transform) {
+data <- log10(data)
+unit <- "log10"
+} else {
+unit <- ""
+}
               
-              mean_value <- round(mean(data, na.rm = TRUE), 1)
-              sd_value <- round(sd(data, na.rm = TRUE), 1)
-              median_value <- round(median(data, na.rm = TRUE), 1)
-              quantile_values <- quantile(data, na.rm = TRUE)
+mean_value <- round(mean(data, na.rm = TRUE), 1)
+sd_value <- round(sd(data, na.rm = TRUE), 1)
+median_value <- round(median(data, na.rm = TRUE), 1)
+quantile_values <- quantile(data, na.rm = TRUE)
               
-              formatted_quantiles <- sapply(quantile_values, function(x) {
-                if (x == 0) {
-                  return(0)
-                } else {
-                  power <- floor(log10(abs(x)))
-                  mantissa <- round(x / 10^power, 1)
-                  return(paste(mantissa, "x 10^", power, unit))
-                }
-              })
+formatted_quantiles <- sapply(quantile_values, function(x) {
+if (x == 0) {
+return(0)
+} else {
+power <- floor(log10(abs(x)))
+mantissa <- round(x / 10^power, 1)
+return(paste(mantissa, "x 10^", power, unit))
+}
+})
               
-              return(list(mean = mean_value, sd = sd_value, median = median_value, quantiles = formatted_quantiles))
-            }
+return(list(mean = mean_value, sd = sd_value, median = median_value, quantiles = formatted_quantiles))
+}
             
-            # List of data frames
-            data_frames <- list(df_sen = df_sen, df_lug = df_lug, df_alt = df_alt, df_chu = df_chu, df_zur = df_zur, df_gen = df_gen)
+# List of data frames
+data_frames <- list(df = df, df_sen = df_sen, df_lug = df_lug, df_alt = df_alt, df_chu = df_chu, df_zur = df_zur, df_gen = df_gen)
+
+# Loop through data frames and variables to calculate statistics
+for (data_frame_name in names(data_frames)) {
+data_frame <- data_frames[[data_frame_name]]
+cat("Data Frame:", data_frame_name, "\n")
+              
+# Calculate statistics for average_ESBL_Ec without log transformation
+stats_esbl <- calculate_stats(data_frame$average_ESBL_Ec)
+cat("ESBL-Ec Percentage - Mean:", stats_esbl$mean, "- SD:", stats_esbl$sd, "- Median:", stats_esbl$median, "- Quantiles:", stats_esbl$quantiles, "\n")
+              
+# Calculate statistics for average_loads_ESBL_Ec and average_loads_tot_Ec with log transformation
+stats_loads_esbl <- calculate_stats(data_frame$average_loads_ESBL_Ec, TRUE)
+cat("ESBL-Ec Loads (log10 transformed) - Mean:", stats_loads_esbl$mean, "- SD:", stats_loads_esbl$sd, "- Median:", stats_loads_esbl$median, "- Quantiles:", stats_loads_esbl$quantiles, "\n")
+              
+stats_loads_tot <- calculate_stats(data_frame$average_loads_tot_Ec, TRUE)
+cat("Total-Ec Loads (log10 transformed) - Mean:", stats_loads_tot$mean, "- SD:", stats_loads_tot$sd, "- Median:", stats_loads_tot$median, "- Quantiles:", stats_loads_tot$quantiles, "\n\n")
+}
             
-            # Loop through data frames and variables to calculate statistics
-            for (data_frame_name in names(data_frames)) {
-              data_frame <- data_frames[[data_frame_name]]
-              cat("Data Frame:", data_frame_name, "\n")
-              
-              # Calculate statistics for average_ESBL_Ec without log transformation
-              stats_esbl <- calculate_stats(data_frame$average_ESBL_Ec)
-              cat("ESBL-Ec - Mean:", stats_esbl$mean, "- SD:", stats_esbl$sd, "- Median:", stats_esbl$median, "- Quantiles:", stats_esbl$quantiles, "\n")
-              
-              # Calculate statistics for average_loads_ESBL_Ec and average_loads_tot_Ec with log transformation
-              stats_loads_esbl <- calculate_stats(data_frame$average_loads_ESBL_Ec, TRUE)
-              cat("ESBL-Ec Loads (log10 transformed) - Mean:", stats_loads_esbl$mean, "- SD:", stats_loads_esbl$sd, "- Median:", stats_loads_esbl$median, "- Quantiles:", stats_loads_esbl$quantiles, "\n")
-              
-              stats_loads_tot <- calculate_stats(data_frame$average_loads_tot_Ec, TRUE)
-              cat("Total-Ec Loads (log10 transformed) - Mean:", stats_loads_tot$mean, "- SD:", stats_loads_tot$sd, "- Median:", stats_loads_tot$median, "- Quantiles:", stats_loads_tot$quantiles, "\n\n")
-            }
-            
-###ESBL-Ec percentage-------------
-####All samples-------------
-#####Mean (sd)------------------------
-mean(df$average_ESBL_Ec, na.rm=T)
-sd(df$average_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df$average_ESBL_Ec, na.rm=T)
-quantile(df$average_ESBL_Ec, na.rm=T)
-
-####ARA Sensetal Laupen-------------
-#####Mean (sd)------------------------
-mean(df_sen$average_ESBL_Ec, na.rm = T)
-sd(df_sen$average_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_sen$average_ESBL_Ec, na.rm=T)
-quantile(df_sen$average_ESBL_Ec, na.rm=T)
-
-####IDA CDA Lugano-------------
-#####Mean (sd)------------------------
-mean(df_lug$average_ESBL_Ec, na.rm = T)
-sd(df_lug$average_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_lug$average_ESBL_Ec, na.rm=T)
-quantile(df_lug$average_ESBL_Ec, na.rm=T)
-
-####ARA Altenrhein-------------
-#####Mean (sd)------------------------
-mean(df_alt$average_ESBL_Ec, na.rm = T)
-sd(df_alt$average_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_alt$average_ESBL_Ec, na.rm=T)
-quantile(df_alt$average_ESBL_Ec, na.rm=T)
-
-####ARA Chur-------------
-#####Mean (sd)------------------------
-mean(df_chu$average_ESBL_Ec, na.rm = T)
-sd(df_chu$average_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_chu$average_ESBL_Ec, na.rm=T)
-quantile(df_chu$average_ESBL_Ec, na.rm=T)
-
-####ARA Werdhölzli Zürich-------------
-#####Mean (sd)------------------------
-mean(df_zur$average_ESBL_Ec, na.rm = T)
-sd(df_zur$average_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_zur$average_ESBL_Ec, na.rm=T)
-quantile(df_zur$average_ESBL_Ec, na.rm=T)
-
-####STEP d'Aïre Genève-------------
-#####Mean (sd)------------------------
-mean(df_gen$average_ESBL_Ec, na.rm = T)
-sd(df_gen$average_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_gen$average_ESBL_Ec, na.rm=T)
-quantile(df_gen$average_ESBL_Ec, na.rm=T)
-
-###ESBL-Ec loads-------------
-####All samples-------------
-#####Mean (sd)------------------------
-mean(log10(df$average_loads_ESBL_Ec), na.rm=T)##overall means (log10Mean) and sd (log10Sd) of the above metrics
-sd(log10(df$average_loads_ESBL_Ec), na.rm=T)
-
-#####Median (IQR)------------------------
-median(df$average_loads_ESBL_Ec, na.rm=T)
-quantile(df$average_loads_ESBL_Ec, na.rm=T)
-
-####ARA Sensetal Laupen-------------
-#####Mean (sd)------------------------
-mean(df_sen$average_loads_ESBL_Ec, na.rm = T)
-sd(df_sen$average_loads_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_sen$average_loads_ESBL_Ec, na.rm=T)
-quantile(df_sen$average_loads_ESBL_Ec, na.rm=T)
-
-####IDA CDA Lugano-------------
-#####Mean (sd)------------------------
-mean(df_lug$average_loads_ESBL_Ec, na.rm = T)
-sd(df_lug$average_loads_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_lug$average_loads_ESBL_Ec, na.rm=T)
-quantile(df_lug$average_loads_ESBL_Ec, na.rm=T)
-
-####ARA Altenrhein-------------
-#####Mean (sd)------------------------
-mean(df_alt$average_loads_ESBL_Ec, na.rm = T)
-sd(df_alt$average_loads_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_alt$average_loads_ESBL_Ec, na.rm=T)
-quantile(df_alt$average_loads_ESBL_Ec, na.rm=T)
-
-####ARA Chur-------------
-#####Mean (sd)------------------------
-mean(df_chu$average_loads_ESBL_Ec, na.rm = T)
-sd(df_chu$average_loads_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_chu$average_loads_ESBL_Ec, na.rm=T)
-quantile(df_chu$average_loads_ESBL_Ec, na.rm=T)
-
-####ARA Werdhölzli Zürich-------------
-#####Mean (sd)------------------------
-mean(df_zur$average_loads_ESBL_Ec, na.rm = T)
-sd(df_zur$average_loads_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_zur$average_loads_ESBL_Ec, na.rm=T)
-quantile(df_zur$average_loads_ESBL_Ec, na.rm=T)
-
-####STEP d'Aïre Genève-------------
-#####Mean (sd)------------------------
-mean(df_gen$average_loads_ESBL_Ec, na.rm = T)
-sd(df_gen$average_loads_ESBL_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_gen$average_loads_ESBL_Ec, na.rm=T)
-quantile(df_gen$average_loads_ESBL_Ec, na.rm=T)
-
-###Total-Ec loads-------------
-####All samples-------------
-#####Mean (sd)------------------------
-mean(log10(df$average_loads_tot_Ec), na.rm=T)##overall means (log10Mean) and sd (log10Sd) of the above metrics
-sd(log10(df$average_loads_tot_Ec), na.rm=T)
-
-#####Median (IQR)------------------------
-median(df$average_loads_tot_Ec, na.rm=T)
-quantile(df$average_loads_tot_Ec, na.rm=T)
-
-####ARA Sensetal Laupen-------------
-#####Mean (sd)------------------------
-mean(df_sen$average_loads_tot_Ec, na.rm = T)
-sd(df_sen$average_loads_tot_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_sen$average_loads_tot_Ec, na.rm=T)
-quantile(df_sen$average_loads_tot_Ec, na.rm=T)
-
-####IDA CDA Lugano-------------
-#####Mean (sd)------------------------
-mean(df_lug$average_loads_tot_Ec, na.rm = T)
-sd(df_lug$average_loads_tot_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_lug$average_loads_tot_Ec, na.rm=T)
-quantile(df_lug$average_loads_tot_Ec, na.rm=T)
-
-####ARA Altenrhein-------------
-#####Mean (sd)------------------------
-mean(df_alt$average_loads_tot_Ec, na.rm = T)
-sd(df_alt$average_loads_tot_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_alt$average_loads_tot_Ec, na.rm=T)
-quantile(df_alt$average_loads_tot_Ec, na.rm=T)
-
-####ARA Chur-------------
-#####Mean (sd)------------------------
-mean(df_chu$average_loads_tot_Ec, na.rm = T)
-sd(df_chu$average_loads_tot_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_chu$average_loads_tot_Ec, na.rm=T)
-quantile(df_chu$average_loads_tot_Ec, na.rm=T)
-
-####ARA Werdhölzli Zürich-------------
-#####Mean (sd)------------------------
-mean(df_zur$average_loads_tot_Ec, na.rm = T)
-sd(df_zur$average_loads_tot_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_zur$average_loads_tot_Ec, na.rm=T)
-quantile(df_zur$average_loads_tot_Ec, na.rm=T)
-
-####STEP d'Aïre Genève-------------
-#####Mean (sd)------------------------
-mean(df_gen$average_loads_tot_Ec, na.rm = T)
-sd(df_gen$average_loads_tot_Ec, na.rm=T)
-
-#####Median (IQR)------------------------
-median(df_gen$average_loads_tot_Ec, na.rm=T)
-quantile(df_gen$average_loads_tot_Ec, na.rm=T)
-
 ##Differences between months-------------------------------
 ###Plots----------------------
 #percentage_ESBL_Ec
