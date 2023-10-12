@@ -57,6 +57,10 @@ df$esblEc_loads_a=as.numeric(df$esblEc_loads_a)
 df$esblEc_loads_b=as.numeric(df$esblEc_loads_b)
 df$totalEc_loads_a=as.numeric(df$totalEc_loads_a)
 df$totalEc_loads_b=as.numeric(df$totalEc_loads_b)
+df$totalEc_cfu_100ml_a=as.numeric(df$totalEc_cfu_100ml_a)
+df$totalEc_cfu_100ml_b=as.numeric(df$totalEc_cfu_100ml_b)
+df$esblEc_cfu_100ml_a=as.numeric(df$esblEc_cfu_100ml_a)
+df$esblEc_cfu_100ml_b=as.numeric(df$esblEc_cfu_100ml_b)
 
 #Create an average value of the E.coli data replicates and use the non-missing value if one of the two replicates is missing
 df$average_ESBL_Ec <- as.numeric(ifelse(is.na(df$esblEc_percentage_a) | is.na(df$esblEc_percentage_b), 
@@ -70,6 +74,19 @@ df$average_loads_tot_Ec <- as.numeric(ifelse(is.na(df$totalEc_loads_a) | is.na(d
 df$average_loads_ESBL_Ec <- as.numeric(ifelse(is.na(df$esblEc_loads_a) | is.na(df$esblEc_loads_b), 
                                   ifelse(is.na(df$esblEc_loads_a), df$esblEc_loads_b, df$esblEc_loads_a), 
                                   rowMeans(df[,c("esblEc_loads_a", "esblEc_loads_b")], na.rm = TRUE)))
+
+df$counts_tot_Ec_1 = (df$totalEc_cfu_100ml_a)/100 #CFU/mL
+df$counts_tot_Ec_2 =(df$totalEc_cfu_100ml_b)/100 #CFU/mL
+df$average_counts_tot_Ec <- as.numeric(ifelse(is.na(df$counts_tot_Ec_1) | is.na(df$counts_tot_Ec_2), 
+                                              ifelse(is.na(df$counts_tot_Ec_1), df$counts_tot_Ec_2, df$counts_tot_Ec_1), 
+                                              rowMeans(df[,c("counts_tot_Ec_1", "counts_tot_Ec_2")], na.rm = TRUE)))
+
+df$counts_ESBL_Ec_1 = (df$esblEc_cfu_100ml_a)/100 #CFU/mL
+df$counts_ESBL_Ec_2 =(df$esblEc_cfu_100ml_b)/100 #CFU/mL
+df$average_counts_ESBL_Ec <- as.numeric(ifelse(is.na(df$counts_ESBL_Ec_1) | is.na(df$counts_ESBL_Ec_2), 
+                                               ifelse(is.na(df$counts_ESBL_Ec_1), df$counts_ESBL_Ec_2, df$counts_ESBL_Ec_1), 
+                                               rowMeans(df[,c("counts_ESBL_Ec_1", "counts_ESBL_Ec_2")], na.rm = TRUE)))
+
 
 #Subset df for WWTPs
 df_sen = df %>% filter(wwtp == "ARA Sensetal Laupen")
@@ -97,54 +114,60 @@ df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
             # Print the confidence interval
             print(confidence_interval)
 
-
+######SHEENA YOU NEED TO ADD THE VARIABLES OF COUNTS CFU/ML IN THE OVERALL STATISTICS CODE BELOW
 ##Calculate overall statistics------------------------
-# Define a function to calculate mean, standard deviation, median, and quantiles
+# Define a function to calculate mean, standard deviation, median, quantiles, minimum, and maximum
 calculate_stats <- function(data, log_transform = FALSE) {
-if (log_transform) {
-data <- log10(data)
-unit <- "log10"
-} else {
-unit <- ""
+  if (log_transform) {
+    data <- log10(data)
+    unit <- "log10"
+  } else {
+    unit <- ""
+  }
+  
+  mean_value <- round(mean(data, na.rm = TRUE), 1)
+  sd_value <- round(sd(data, na.rm = TRUE), 1)
+  median_value <- round(median(data, na.rm = TRUE), 1)
+  quantile_values <- quantile(data, na.rm = TRUE)
+  
+  formatted_quantiles <- sapply(quantile_values, function(x) {
+    if (x == 0) {
+      return(0)
+    } else {
+      power <- floor(log10(abs(x)))
+      mantissa <- round(x / 10^power, 1)
+      return(paste(mantissa, "x 10^", power, unit))
+    }
+  })
+  
+  min_value <- min(data, na.rm = TRUE)
+  max_value <- max(data, na.rm = TRUE)
+  
+  formatted_min <- ifelse(log_transform, paste("10^", sprintf("%.2f", min_value), unit), sprintf("%.2f", min_value))
+  formatted_max <- ifelse(log_transform, paste("10^", sprintf("%.2f", max_value), unit), sprintf("%.2f", max_value))
+  
+  return(list(mean = mean_value, sd = sd_value, median = median_value, quantiles = formatted_quantiles, min = formatted_min, max = formatted_max))
 }
-              
-mean_value <- round(mean(data, na.rm = TRUE), 1)
-sd_value <- round(sd(data, na.rm = TRUE), 1)
-median_value <- round(median(data, na.rm = TRUE), 1)
-quantile_values <- quantile(data, na.rm = TRUE)
-              
-formatted_quantiles <- sapply(quantile_values, function(x) {
-if (x == 0) {
-return(0)
-} else {
-power <- floor(log10(abs(x)))
-mantissa <- round(x / 10^power, 1)
-return(paste(mantissa, "x 10^", power, unit))
-}
-})
-              
-return(list(mean = mean_value, sd = sd_value, median = median_value, quantiles = formatted_quantiles))
-}
-            
 # List of data frames
 data_frames <- list(df = df, df_sen = df_sen, df_lug = df_lug, df_alt = df_alt, df_chu = df_chu, df_zur = df_zur, df_gen = df_gen)
 
 # Loop through data frames and variables to calculate statistics
 for (data_frame_name in names(data_frames)) {
-data_frame <- data_frames[[data_frame_name]]
-cat("Data Frame:", data_frame_name, "\n")
-              
-# Calculate statistics for average_ESBL_Ec without log transformation
-stats_esbl <- calculate_stats(data_frame$average_ESBL_Ec)
-cat("ESBL-Ec Percentage - Mean:", stats_esbl$mean, "- SD:", stats_esbl$sd, "- Median:", stats_esbl$median, "- Quantiles:", stats_esbl$quantiles, "\n")
-              
-# Calculate statistics for average_loads_ESBL_Ec and average_loads_tot_Ec with log transformation
-stats_loads_esbl <- calculate_stats(data_frame$average_loads_ESBL_Ec, TRUE)
-cat("ESBL-Ec Loads (log10 transformed) - Mean:", stats_loads_esbl$mean, "- SD:", stats_loads_esbl$sd, "- Median:", stats_loads_esbl$median, "- Quantiles:", stats_loads_esbl$quantiles, "\n")
-              
-stats_loads_tot <- calculate_stats(data_frame$average_loads_tot_Ec, TRUE)
-cat("Total-Ec Loads (log10 transformed) - Mean:", stats_loads_tot$mean, "- SD:", stats_loads_tot$sd, "- Median:", stats_loads_tot$median, "- Quantiles:", stats_loads_tot$quantiles, "\n\n")
+  data_frame <- data_frames[[data_frame_name]]
+  cat("Data Frame:", data_frame_name, "\n")
+  
+  # Calculate statistics for average_ESBL_Ec without log transformation
+  stats_esbl <- calculate_stats(data_frame$average_ESBL_Ec)
+  cat("ESBL-Ec Percentage - Mean:", stats_esbl$mean, "- SD:", stats_esbl$sd, "- Median:", stats_esbl$median, "- Quantiles:", stats_esbl$quantiles, "- Min:", stats_esbl$min, "- Max:", stats_esbl$max, "\n")
+  
+  # Calculate statistics for average_loads_ESBL_Ec and average_loads_tot_Ec with log transformation
+  stats_loads_esbl <- calculate_stats(data_frame$average_loads_ESBL_Ec, TRUE)
+  cat("ESBL-Ec Loads (log10 transformed) - Mean:", stats_loads_esbl$mean, "- SD:", stats_loads_esbl$sd, "- Median:", stats_loads_esbl$median, "- Quantiles:", stats_loads_esbl$quantiles, "- Min:", stats_loads_esbl$min, "- Max:", stats_loads_esbl$max, "\n")
+  
+  stats_loads_tot <- calculate_stats(data_frame$average_loads_tot_Ec, TRUE)
+  cat("Total-Ec Loads (log10 transformed) - Mean:", stats_loads_tot$mean, "- SD:", stats_loads_tot$sd, "- Median:", stats_loads_tot$median, "- Quantiles:", stats_loads_tot$quantiles, "- Min:", stats_loads_tot$min, "- Max:", stats_loads_tot$max, "\n\n")
 }
+
             
 ##Differences between months-------------------------------
 ###Plots----------------------
