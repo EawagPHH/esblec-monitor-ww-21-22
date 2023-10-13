@@ -1377,6 +1377,8 @@ true_mean = 0
 df_alt = df %>% filter(wwtp == "ARA Altenrhein")
 alpha_alt = mean(df_alt$average_ESBL_Ec)^2/sd(df_alt$average_ESBL_Ec)^2
 beta_alt = mean(df_alt$average_ESBL_Ec)/sd(df_alt$average_ESBL_Ec)^2
+gmean_alt=alpha_alt/beta_alt
+CI_alt_data <- (sqrt(alpha_alt / beta_alt^2 /50))*1.96
 se_alt <- sqrt(alpha_alt / beta_alt^2 / sample_sizes)
 CI_alt = se_alt*1.96
 
@@ -1386,6 +1388,8 @@ data_alt <- data.frame(sample_sizes=sample_sizes, wwtp="ARA Altenrhein",
 df_chu = df %>% filter(wwtp == "ARA Chur")
 alpha_chu = mean(df_chu$average_ESBL_Ec)^2/sd(df_chu$average_ESBL_Ec)^2
 beta_chu = mean(df_chu$average_ESBL_Ec)/sd(df_chu$average_ESBL_Ec)^2
+gmean_chu=alpha_chu/beta_chu
+CI_chu_data <- (sqrt(alpha_chu / beta_chu^2 /51))*1.96
 se_chu <- sqrt(alpha_chu / beta_chu^2 / sample_sizes)
 CI_chu = se_chu*1.96
 
@@ -1395,6 +1399,8 @@ data_chu <- data.frame(sample_sizes=sample_sizes, wwtp="ARA Chur",
 df_zur = df %>% filter(wwtp == "ARA Werdhölzli Zürich")
 alpha_zur = mean(df_zur$average_ESBL_Ec)^2/sd(df_zur$average_ESBL_Ec)^2
 beta_zur = mean(df_zur$average_ESBL_Ec)/sd(df_zur$average_ESBL_Ec)^2
+gmean_zur=alpha_zur/beta_zur
+CI_zur_data <- (sqrt(alpha_zur / beta_zur^2 / 51))*1.96
 se_zur <- sqrt(alpha_zur / beta_zur^2 / sample_sizes)
 CI_zur = se_zur*1.96
 
@@ -1404,6 +1410,8 @@ data_zur <- data.frame(sample_sizes=sample_sizes, wwtp="ARA Werdhölzli Zürich"
 df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
 alpha_gen = mean(df_gen$average_ESBL_Ec)^2/sd(df_gen$average_ESBL_Ec)^2
 beta_gen = mean(df_gen$average_ESBL_Ec)/sd(df_gen$average_ESBL_Ec)^2
+gmean_gen=alpha_gen/beta_gen
+CI_gen_data <- (sqrt(alpha_gen / beta_gen^2 /51))*1.96
 se_gen <- sqrt(alpha_gen / beta_gen^2 / sample_sizes)
 CI_gen = se_gen*1.96
 
@@ -1413,6 +1421,8 @@ data_gen <- data.frame(sample_sizes=sample_sizes, wwtp="STEP d'Aïre Genève",
 df_sen = df %>% filter(wwtp == "ARA Sensetal Laupen")
 alpha_sen = mean(df_sen$average_ESBL_Ec)^2/sd(df_sen$average_ESBL_Ec)^2
 beta_sen = mean(df_sen$average_ESBL_Ec)/sd(df_sen$average_ESBL_Ec)^2
+gmean_sen=alpha_sen/beta_sen
+CI_sen_data <- (sqrt(alpha_sen / beta_sen^2 / 51))*1.96
 se_sen <- sqrt(alpha_sen / beta_sen^2 / sample_sizes)
 CI_sen = se_sen*1.96
 
@@ -1422,6 +1432,8 @@ data_sen <- data.frame(sample_sizes=sample_sizes, wwtp="ARA Sensetal Laupen",
 df_lug = df %>% filter(wwtp == "IDA CDA Lugano")
 alpha_lug = mean(df_lug$average_ESBL_Ec)^2/sd(df_lug$average_ESBL_Ec)^2
 beta_lug = mean(df_lug$average_ESBL_Ec)/sd(df_lug$average_ESBL_Ec)^2
+gmean_lug=alpha_lug/beta_lug
+CI_lug_data <- (sqrt(alpha_lug / beta_lug^2 / 50))*1.96
 se_lug <- sqrt(alpha_lug / beta_lug^2 / sample_sizes)
 CI_lug = se_lug*1.96
 
@@ -1439,7 +1451,7 @@ tot=ggplot(data, aes(x = sample_sizes)) +
   theme(axis.text.x=element_text(angle=90), legend.position= "right")+
   scale_x_continuous(breaks = c(1,12, 24, 52, 104, 156), labels = c("1x Year","1x Month", "2x Month", "1x Week", "2x Week", "3x Week"))+
   xlab("Sampling Frequency") +
-  ylab("95% CI") +
+  ylab("Width of 95% CI") +
   labs(color="WWTP")+
   geom_vline(xintercept = c(1, 12, 24, 52, 104, 156), linetype = "dotted")+
-  ggtitle("ESBL-Ec percentage (%)")
+  ggtitle(expression(paste("Percentage of ESBL- ", italic("E. coli"), " (%)")))
