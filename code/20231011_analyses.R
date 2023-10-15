@@ -1184,18 +1184,18 @@ for (i in seq_along(df_list)) {
 
 ###Carriage estimation------
 ####Whole Switzerland, with population adjusted ESBL-Ec percentage in WW-----
-#Median and 25th-75th interquantile range of ESBL-Ec percentage in WW
-  # ARA Alt = 1.57 (1.27-2.10)  64'000
-  # ARA Chu = 1.29 (0.85-1.65)  55'000
-  # ARA Gen = 2.07 (1.61-2.63)  454'000
-  # ARA Zur = 1.69 (1.40-2.15)  471'000
-  # ARA Lug = 1.89 (1.46-2.37)  124'000
-  # ARA Sen = 1.26 (0.99-1.66)  62'000
+#Gamma_mean of ESBL-Ec percentage in WW
+  # ARA Alt = 1.722433   64'000
+  # ARA Chu = 1.397264   55'000
+  # ARA Gen = 2.019172   454'000
+  # ARA Zur = 1.913655   471'000
+  # ARA Lug = 1.970193   124'000
+  # ARA Sen = 1.373625   62'000
                                   #tot population = 1'230'000
 
 #Estimate mean ESBL-Ec adjusted by population in Switzerland
 mean = (1.722433*64000+1.397264*55000+2.019172*454000+1.913655*471000+1.970193*124000+1.373625*62000)/(64000+55000+454000+471000+124000+62000)
-  #mean = 1.89804
+  #population weighted mean = 1.89804
 
 #and CI 
 #min = (1.27*64000+0.85*55000+1.61*454000+1.40*471000+1.46*124000+0.99*62000)/(64000+55000+454000+471000+124000+62000)
@@ -1204,8 +1204,8 @@ mean = (1.722433*64000+1.397264*55000+2.019172*454000+1.913655*471000+1.970193*1
   #max = 2.3
 
 # Create data frame for Switzerland
-data_ch <- data.frame(x = rep(seq(0.01, 1, by = 0.00001)),  # 100 values for "x" repeated 6 times
-                      a = rep(c(1.89804)))
+data_ch <- data.frame(x = rep(seq(0.01, 1, by = 0.00001)),  
+                      a = rep(c(0.0189804))) #a = population weighted mean of gamma_mean of each WWTP.
 
 #data_ch_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
                           #a = c(0.0141))
@@ -1224,7 +1224,7 @@ data_ch$Y[data_ch$Y > 1] <- 1
 #data_ch$Ymax[data_ch$Ymax > 1] <- 1
 
 #Plot
-ch <- ggplot(data_ch[data_ch$x >= 1.89804,], aes(x = x, y = Y)) +
+ch <- ggplot(data_ch[data_ch$x >= 0.0189804,], aes(x = x, y = Y)) +
   geom_line(color="black", linewidth=1) +
   #geom_ribbon(data=data_ch, 
   #aes(ymin = Ymin, ymax = Ymax), fill = "black", alpha = 0.3, colour=NA) +
@@ -1237,7 +1237,7 @@ ch <- ggplot(data_ch[data_ch$x >= 1.89804,], aes(x = x, y = Y)) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
-  geom_textvline(label = "0.018", vjust = 1.3, hjust=-0.0,data = data_ch[data_ch$Y == 1, ], 
+  geom_textvline(label = "0.019", vjust = 1.3, hjust=-0.0,data = data_ch[data_ch$Y == 1, ], 
                  aes(xintercept = a), linetype = "dashed", color="red", alpha = 0.8)+
   ggtitle("Switzerland")+
   theme_minimal()+
@@ -1245,55 +1245,16 @@ ch <- ggplot(data_ch[data_ch$x >= 1.89804,], aes(x = x, y = Y)) +
 
 ch
 
-####All together-----
-# Create a data frame with different values of "a", different one for each WWTP
-data <- data.frame(x = rep(seq(0.01, 1, by = 0.01), times = 6),  # 100 values for "x" repeated 6 times
-                   a = rep(c(0.0157, 0.0129, 0.0207, 0.0169, 0.0189, 0.0126), each = 100))  # Different values of "a" repeated for each "x"
-#Alt, Chur, Genf, Zurich, Lugano, Laupen
-# Calculate Y based on the function Y = a/x
-data$Y <- data$a / data$x
-
-# Set Y values greater than 1 to 1
-data$Y[data$Y > 1] <- 1
-
-# Adjust 'x' values based on 'a'
-data$x <- ifelse(data$x < data$a, data$a, data$x)
-
-# Create the plot
-p=ggplot(data, aes(x = x, y = Y, color = factor(a))) +
-  geom_line() +
-  geom_point() +
-  labs(x = "Proportion of ESBL-Ec out of total E. coli in the gut",
-       y = "Prevalence of ESBL-Ec carriage within the community",
-       color = "WWTP") +
-  scale_color_manual(
-    values = c("#fc8d62ff", "#8da0cbff", "#66c2a5ff","#e78ac3ff", "#ffd92fff", "#a6d854ff"),
-    breaks = c(0.0157, 0.0129, 0.0207, 0.0169, 0.0189, 0.0126),  # Values of 'a'
-    labels = c("ARA Altenrhein", "ARA Chur", "STEP d'Aïre Genève", "ARA Werdhölzli Zürich", "IDA CDA Lugano", "ARA Sensetal Laupen")  # Names for legend
-  ) +
-  scale_y_continuous(
-    limits = c(0, 1),  # Set y-axis limits
-    breaks = seq(0, 1, by = 0.2)  # Set y-axis tick positions
-  ) +
-  scale_x_log10(
-    limits = c(0.01, 1),
-    breaks = c(0.01,0.1, 1),  # Set x-axis tick positions
-    labels = c(0.01, 0.1,1) # Set x-axis tick labels
-  ) +
-  theme_minimal()+
-  geom_vline(data = data[data$Y == 1, ], aes(xintercept = a, color = factor(a)), linetype = "dashed", alpha=0.5) +
-  theme(legend.position= c(0.9, 0.9),legend.justification = c(1, 1))
-
 ####ARA Altenrhein with CI-------
-# Create a data frame with different values of "a", different one for each WWTP
+# Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
 data_alt <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                   a = c(0.0157))  
+                   a = c(0.01722433))  #a = gamma_mean
 
 data_alt_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                       a = c(0.0127))
+                       a = c(0.01526898)) #a = gamma_mean - CI
 
 data_alt_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.0210))
+                           a = c(0.01917968)) #a = gamma_mean + CI
 
 
 # Calculate Ys based on the function Y = a/x
@@ -1307,7 +1268,7 @@ data_alt$Ymin[data_alt$Ymin > 1] <- 1
 data_alt$Ymax[data_alt$Ymax > 1] <- 1
 
 # Create the plot
-a <- ggplot(data_alt[data_alt$x >= 0.0157,], aes(x = x, y = Y)) +
+a <- ggplot(data_alt[data_alt$x >= 0.01722433,], aes(x = x, y = Y)) +
   geom_line(color="#fc8d62ff") +
   geom_ribbon(data=data_alt, 
               aes(ymin = Ymin, ymax = Ymax), fill = "#fc8d62ff", alpha = 0.3, colour=NA) +
@@ -1320,7 +1281,7 @@ a <- ggplot(data_alt[data_alt$x >= 0.0157,], aes(x = x, y = Y)) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
-  geom_textvline(label = "0.0157", vjust = 1.3, hjust=-0.0,data = data_alt[data_alt$Y == 1, ], 
+  geom_textvline(label = "0.017", vjust = 1.3, hjust=-0.0,data = data_alt[data_alt$Y == 1, ], 
                  aes(xintercept = a), linetype = "dashed", color="#fc8d62ff", alpha = 0.8)+
   ggtitle("ARA Altenrhein")+
   theme_minimal()+
@@ -1329,15 +1290,15 @@ a <- ggplot(data_alt[data_alt$x >= 0.0157,], aes(x = x, y = Y)) +
 a
 
 ####ARA Chur with CI-------
-# Create a data frame with different values of "a", different one for each WWTP
+# Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
 data_chu <- data.frame(x = seq(0.005, 1, by = 0.0001),  
-                       a = c(0.0129))  
+                       a = c(0.01397264))  #a = gamma_mean
 
 data_chu_min <- data.frame(x = seq(0.005, 1, by = 0.0001),  
-                           a = c(0.0085))
+                           a = c(0.01180494)) #a = gamma_mean - CI
 
 data_chu_max <- data.frame(x = seq(0.005, 1, by = 0.0001),  
-                           a = c(0.0165))
+                           a = c(0.01614034)) #a = gamma_mean + CI
 
 
 # Calculate Ys based on the function Y = a/x
@@ -1351,7 +1312,7 @@ data_chu$Ymin[data_chu$Ymin > 1] <- 1
 data_chu$Ymax[data_chu$Ymax > 1] <- 1
 
 # Create the plot
-b <- ggplot(data_chu[data_chu$x >= 0.0129,], aes(x = x, y = Y)) +
+b <- ggplot(data_chu[data_chu$x >= 0.01397264,], aes(x = x, y = Y)) +
   geom_line(color="#8da0cbff") +
   geom_ribbon(data = data_chu,aes(ymin = Ymin, ymax = Ymax), fill = "#8da0cbff", alpha = 0.3, colour=NA) +
   scale_x_log10(
@@ -1363,7 +1324,7 @@ b <- ggplot(data_chu[data_chu$x >= 0.0129,], aes(x = x, y = Y)) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
-  geom_textvline(label = "0.0129", vjust = 1.3, hjust=-0.0,data = data_chu[data_chu$Y == 1, ], 
+  geom_textvline(label = "0.014", vjust = 1.3, hjust=-0.0,data = data_chu[data_chu$Y == 1, ], 
                  aes(xintercept = a), linetype = "dashed", color="#8da0cbff", alpha = 0.8)+
   ggtitle("ARA Chur")+
   theme_minimal()+
@@ -1372,15 +1333,15 @@ b
 
 
 ####STEP d'Aïre Genève with CI-------
-# Create a data frame with different values of "a", different one for each WWTP
+# Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
 data_gen <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                       a = c(0.0207))  
+                       a = c(0.02019172))  #a = gamma_mean
 
 data_gen_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.0161))
+                           a = c(0.01838417)) #a = gamma_mean - CI
 
 data_gen_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.0263))
+                           a = c(0.02199927)) #a = gamma_mean + CI
 
 
 # Calculate Ys based on the function Y = a/x
@@ -1394,7 +1355,7 @@ data_gen$Ymin[data_gen$Ymin > 1] <- 1
 data_gen$Ymax[data_gen$Ymax > 1] <- 1
 
 # Create the plot
-c <- ggplot(data_gen[data_gen$x >= 0.0207,], aes(x = x, y = Y)) +
+c <- ggplot(data_gen[data_gen$x >= 0.02019172,], aes(x = x, y = Y)) +
   geom_line(color="#66c2a5ff") +
   geom_ribbon(data = data_gen,aes(ymin = Ymin, ymax = Ymax), fill = "#66c2a5ff", alpha = 0.3, colour=NA) +
   scale_x_log10(
@@ -1406,22 +1367,22 @@ c <- ggplot(data_gen[data_gen$x >= 0.0207,], aes(x = x, y = Y)) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
-  geom_textvline(label = "0.0207", vjust = 1.3, hjust=-0.0,data = data_gen[data_gen$Y == 1, ], 
+  geom_textvline(label = "0.020", vjust = 1.3, hjust=-0.0,data = data_gen[data_gen$Y == 1, ], 
                  aes(xintercept = a), linetype = "dashed", color="#66c2a5ff", alpha = 0.8)+
   ggtitle("STEP d'Aïre Genève")+
   theme_minimal()+
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
 c
 ####ARA Werdhölzli Zürich with CI-------
-# Create a data frame with different values of "a", different one for each WWTP
+# Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
 data_zur <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                       a = c(0.0169))  
+                       a = c(0.01913655))  #a = gamma_mean
 
 data_zur_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.0140))
+                           a = c(0.01661377)) #a = gamma_mean - CI
 
 data_zur_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.0215))
+                           a = c(0.02165933)) #a = gamma_mean + CI
 
 
 # Calculate Ys based on the function Y = a/x
@@ -1435,7 +1396,7 @@ data_zur$Ymin[data_zur$Ymin > 1] <- 1
 data_zur$Ymax[data_zur$Ymax > 1] <- 1
 
 # Create the plot
-d <- ggplot(data_zur[data_zur$x >= 0.0169,], aes(x = x, y = Y)) +
+d <- ggplot(data_zur[data_zur$x >= 0.01913655,], aes(x = x, y = Y)) +
   geom_line(color="#e78ac3ff") +
   geom_ribbon(data = data_zur,aes(ymin = Ymin, ymax = Ymax), fill = "#e78ac3ff", alpha = 0.3, colour=NA) +
   scale_x_log10(
@@ -1447,7 +1408,7 @@ d <- ggplot(data_zur[data_zur$x >= 0.0169,], aes(x = x, y = Y)) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
-  geom_textvline(label = "0.0169", vjust = 1.3, hjust=-0.0,data = data_zur[data_zur$Y == 1, ], 
+  geom_textvline(label = "0.019", vjust = 1.3, hjust=-0.0,data = data_zur[data_zur$Y == 1, ], 
                  aes(xintercept = a), linetype = "dashed", color="#e78ac3ff", alpha = 0.8)+
   ggtitle("ARA Werdhölzli Zürich")+
   theme_minimal()+
@@ -1455,15 +1416,15 @@ d <- ggplot(data_zur[data_zur$x >= 0.0169,], aes(x = x, y = Y)) +
 d
 
 ####IDA CDA Lugano with CI-------
-# Create a data frame with different values of "a", different one for each WWTP
+# Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
 data_lug <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                       a = c(0.0189))  
+                       a = c(0.01970193))  #a = gamma_mean
 
 data_lug_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.0146))
+                           a = c(0.01743486)) #a = gamma_mean - CI
 
 data_lug_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.0237))
+                           a = c(0.021969)) #a = gamma_mean + CI
 
 
 # Calculate Ys based on the function Y = a/x
@@ -1477,7 +1438,7 @@ data_lug$Ymin[data_lug$Ymin > 1] <- 1
 data_lug$Ymax[data_lug$Ymax > 1] <- 1
 
 # Create the plot
-e <- ggplot(data_lug[data_lug$x >= 0.0189,], aes(x = x, y = Y)) +
+e <- ggplot(data_lug[data_lug$x >= 0.01970193,], aes(x = x, y = Y)) +
   geom_line(color="#ffd92fff") +
   geom_ribbon(data = data_lug,aes(ymin = Ymin, ymax = Ymax), fill = "#ffd92fff", alpha = 0.3, colour=NA) +
   scale_x_log10(
@@ -1489,22 +1450,23 @@ e <- ggplot(data_lug[data_lug$x >= 0.0189,], aes(x = x, y = Y)) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
-  geom_textvline(label = "0.0189", vjust = 1.3, hjust=-0.0,data = data_lug[data_lug$Y == 1, ], 
+  geom_textvline(label = "0.020", vjust = 1.3, hjust=-0.0,data = data_lug[data_lug$Y == 1, ], 
                  aes(xintercept = a), linetype = "dashed", color="#ffd92fff", alpha = 0.8)+
   ggtitle("IDA CDA Lugano")+
   theme_minimal()+
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
 e
+
 ####ARA Sensetal Laupen with CI-------
-# Create a data frame with different values of "a", different one for each WWTP
+# Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
 data_sen <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                       a = c(0.0126))  
+                       a = c(0.01373625))  #a = gamma_mean
 
 data_sen_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.0099))
+                           a = c(0.01221433)) #a = gamma_mean - CI
 
 data_sen_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.0166))
+                           a = c(0.01525817)) #a = gamma_mean + CI
 
 
 # Calculate Ys based on the function Y = a/x
@@ -1518,7 +1480,7 @@ data_sen$Ymin[data_sen$Ymin > 1] <- 1
 data_sen$Ymax[data_sen$Ymax > 1] <- 1
 
 # Create the plot
-f <- ggplot(data_sen[data_sen$x >= 0.0126,], aes(x = x, y = Y)) +
+f <- ggplot(data_sen[data_sen$x >= 0.01373625,], aes(x = x, y = Y)) +
   geom_line(color="#a6d854ff") +
   geom_ribbon(data = data_sen,aes(ymin = Ymin, ymax = Ymax), fill = "#a6d854ff", alpha = 0.3, colour=NA) +
   scale_x_log10(
@@ -1530,7 +1492,7 @@ f <- ggplot(data_sen[data_sen$x >= 0.0126,], aes(x = x, y = Y)) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
-  geom_textvline(label = "0.0126", vjust = 1.3, hjust=-0.0,data = data_sen[data_sen$Y == 1, ], 
+  geom_textvline(label = "0.014", vjust = 1.3, hjust=-0.0,data = data_sen[data_sen$Y == 1, ], 
              aes(xintercept = a), linetype = "dashed", color="#a6d854ff", alpha = 0.7)+
   ggtitle("ARA Sensetal Laupen")+
   theme_minimal()+
