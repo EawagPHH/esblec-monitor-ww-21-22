@@ -1197,6 +1197,35 @@ for (i in seq_along(df_list)) {
 mean = (1.722433*64000+1.397264*55000+2.019172*454000+1.913655*471000+1.970193*124000+1.373625*62000)/(64000+55000+454000+471000+124000+62000)
   #population weighted mean = 1.89804
 
+#S.E of population weighted mean
+#(SEMw)^2 = [n/(n-1)(∑Pi)^2]*[∑(Pi*Xi - P*Xw)^2-2*Xw*∑(Pi-P)(Pi*Xi - P*Xw)+Xw^2*∑(Pi-p)^2]
+
+calculate_SEMw <- function(Pi, Xi, Xw, P) {
+  n <- length(Pi)
+  
+  term1 <- n / ((n - 1) * sum(Pi)^2)
+  
+  term2 <- (sum((Pi * Xi - P * Xw)^2) - 
+                 2 * Xw * sum((Pi - P) * (Pi * Xi - P * Xw)) + 
+                 Xw^2 * sum((Pi - P)^2))
+  
+  SEMw <- sqrt(term1 * term2)
+  
+  return(SEMw)
+}
+
+# Replace Pi, Xi, Xw, and P with actual gamma mean and population size
+Pi <- c(64000, 55000, 454000, 471000, 124000, 62000)  # Population in each site
+Xi <- c(1.722433, 1.397264, 2.019172, 1.913655, 1.970193, 1.373625)  # Gamma mean ofESBL-Ec percentage in each site
+Xw <- weighted.mean(Xi, Pi)  # Population-weighted mean over sites
+P <- mean(Pi)  # Mean of the population across sites
+
+SEMw <- calculate_SEMw(Pi, Xi, Xw, P)
+print(SEMw)
+
+CI = SEMw*1.96
+print(CI)
+
 #and CI 
 #min = (1.27*64000+0.85*55000+1.61*454000+1.40*471000+1.46*124000+0.99*62000)/(64000+55000+454000+471000+124000+62000)
   #min = 1.43
@@ -1204,35 +1233,35 @@ mean = (1.722433*64000+1.397264*55000+2.019172*454000+1.913655*471000+1.970193*1
   #max = 2.3
 
 # Create data frame for Switzerland
-data_ch <- data.frame(x = rep(seq(0.01, 1, by = 0.00001)),  
+data_ch <- data.frame(x = rep(seq(0.01, 1, by = 0.0001)),  
                       a = rep(c(0.0189804))) #a = population weighted mean of gamma_mean of each WWTP.
 
-#data_ch_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                          #a = c(0.0141))
+data_ch_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
+                          a = c(0.01773374)) #a = population weighted mean - CI of weighted mean
 
-#data_ch_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                          #a = c(0.0230))
+data_ch_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
+                          a = c(0.02022706))
 
 # Calculate Y based on the function Y = a/x
 data_ch$Y <- data_ch$a / data_ch$x
-#data_ch$Ymin <- data_ch_min$a / data_ch_min$x
-#data_ch$Ymax <- data_ch_max$a /data_ch_max$x
+data_ch$Ymin <- data_ch_min$a / data_ch_min$x
+data_ch$Ymax <- data_ch_max$a /data_ch_max$x
 
 # Set Y values greater than 1 to 1
 data_ch$Y[data_ch$Y > 1] <- 1
-#data_ch$Ymin[data_ch$Ymin > 1] <- 1
-#data_ch$Ymax[data_ch$Ymax > 1] <- 1
+data_ch$Ymin[data_ch$Ymin > 1] <- 1
+data_ch$Ymax[data_ch$Ymax > 1] <- 1
 
 #Plot
 ch <- ggplot(data_ch[data_ch$x >= 0.0189804,], aes(x = x, y = Y)) +
   geom_line(color="black", linewidth=1) +
-  #geom_ribbon(data=data_ch, 
-  #aes(ymin = Ymin, ymax = Ymax), fill = "black", alpha = 0.3, colour=NA) +
+  geom_ribbon(data=data_ch, 
+  aes(ymin = Ymin, ymax = Ymax), fill = "black", alpha = 0.3, colour=NA) +
   scale_x_log10(
     limits = c(0.005, 1),
     breaks = c(0.005, 0.01,0.1, 1),  
     labels = c(0.005, 0.01,0.1, 1)) +  
-  labs(x = expression(paste("Proportion of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in the gut")),
+  labs(x = expression(paste("Percentage of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in the gut")),
        y = expression(paste("Prevalence of ESBL-", italic("E. coli"), " carriage within the community"))) +
   scale_y_continuous(
     limits = c(0, 1),
