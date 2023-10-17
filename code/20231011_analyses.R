@@ -1,5 +1,5 @@
-#-----ESBL-Ec in WW------
-#1) Load required packages
+#ESBL-Ec in WW------
+##Load required packages------
 library(dplyr)
 library(RColorBrewer)
 library(ggplot2)
@@ -957,17 +957,1424 @@ heatmap_plot_loads_tot <- ggplot(heatmap_data_3, aes(x = Variable, y = Location)
 ggarrange(heatmap_plot,heatmap_plot_loads_ESBL, heatmap_plot_loads_tot, ncol=3, labels = c("A", "B", "C"), common.legend = TRUE)
 
 
-###Carriage estimation------
-####Whole Switzerland, with population adjusted ESBL-Ec percentage in WW-----
-#Gamma_mean of ESBL-Ec percentage in WW
-  # ARA Alt = 1.722433   64'000
-  # ARA Chu = 1.397264   55'000
-  # ARA Gen = 2.019172   454'000
-  # ARA Zur = 1.913655   471'000
-  # ARA Lug = 1.970193   124'000
-  # ARA Sen = 1.373625   62'000
-                                  #tot population = 1'230'000
+##Estimate sample size---------------------------
+#Bayesian code to fit log normal distribution to my data
+graphics.off()
+setwd("C:/Users/Sheena/Desktop/Sample Size")
+source("DBDA2E-utilities.R")
+fileNameRoot="A" 
+library(rjags)
+library(runjags)
 
+###Altenrhein----------------
+df_per_alt = df %>% filter(wwtp == "ARA Altenrhein")
+C = as.numeric(df_per_alt[, "average_ESBL_Ec"])
+N = length(C)
+
+#### Log Normal - Model ---------------------------
+# Package the data for shipping to JAGS:
+dataList = list(
+  C = C ,
+  N = N
+)
+
+# THE MODEL.
+modelstring ="
+model {
+for( i in 1 : N ) {
+
+#Likelihood LN 
+
+C[i] ~ dlnorm(muOfLog,1/sigmaOfLog^2) 
+}
+# Prior 
+muOfLog ~ dunif( -100 , 100)
+sigmaOfLog ~ dexp(0.1)
+
+}
+" # close quote for modelstring
+writeLines(modelstring,con="model.txt")
+
+# RUN THE CHAINS
+require(rjags)
+parameters = c("muOfLog","sigmaOfLog") 
+adaptSteps = 5000         # Number of steps to "tune" the samplers.
+burnInSteps = 5000        # Number of steps to "burn-in" the samplers.
+nChains = 3               # Number of chains to run.
+numSavedSteps=10000       # Total number of steps in chains to save.
+thinSteps=1               # Number of steps to "thin" (1=keep every step).
+nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain.
+# Create, initialize, and adapt the model:
+perc_ESBL_alt_ln = jags.model( "model.txt" , data=dataList ,
+                               n.chains=nChains , n.adapt=adaptSteps )
+# Burn-in:
+cat( "Burning in the MCMC chain...\n" )
+update( perc_ESBL_alt_ln , n.iter=burnInSteps )
+# The saved MCMC chain:
+cat( "Sampling final MCMC chain...\n" )
+mcmcCoda = coda.samples( perc_ESBL_alt_ln , variable.names=parameters ,
+                         n.iter=nPerChain , thin=thinSteps )
+
+##### Examine results-DIC------------------------------------------------------------------------------
+# Convert coda-object codaSamples to matrix object for easier handling.
+mcmcChain = as.matrix( mcmcCoda )
+chainLength = NROW(mcmcChain)
+
+# Display diagnostics of chain, for specified parameters:
+parameterNames = varnames(mcmcCoda)
+for ( parName in parameterNames ) {
+  diagMCMC( codaObject=mcmcCoda , parName=parName)
+}
+
+median(mcmcChain[,"muOfLog"])
+median(mcmcChain[,"sigmaOfLog"])
+
+dic.samples(perc_ESBL_alt_ln, 10000)
+##### Plot CCDF ------------------------------------------------------------------------------
+tiff(file = paste("Alt_ln.tiff", sep = ""), width = 2000, height = 2000, 
+     units = "px",res = 1000, pointsize = 7)
+
+options(scipen = 0)
+point_x = 1
+point_y = 1
+myTicks<-c(1.0E-1,1.0E+0, 1.0E+1)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+par(cex.lab = 0.8)
+
+plot(point_x, point_y, col="white", pch = 19, main = expression(paste("Altenrhein LogNormal")), xlab = expression(paste("ESBL-", italic("E. coli"), " (%)")), ylab =  expression(paste("Fraction of samples above the percentage")), xaxt="n", xlim = range(myTicks),ylim=c(0.001, 1),
+     font.lab = 1, log='xy')
+axis(side = 1, at = myTicks)
+
+#Plot uncertainty log-normal distribution
+#Simulating uncertainty interval:
+HDI_output = matrix(1:160 , nrow = 80, ncol = 2)
+pb = txtProgressBar(min = 0, max = 80, initial = 0, style = 3)
+cat("Simulating uncertainty interval...\n")
+
+for (j in seq(0.1, 80, 1)) {
+  output <- numeric(length = nrow(mcmcChain))
+  for (i in 1:nrow(mcmcChain)) {            
+    output[[i]] = 1-plnorm(10 ^ (j / 4), meanlog = mcmcChain[i,"muOfLog"], sdlog = mcmcChain[i,"sigmaOfLog"])
+  }
+  HDI_output[j, ] = HDIofMCMC(output, 0.95)
+  setTxtProgressBar(pb,j)
+}
+
+# Representation of the interval as a surface:
+MatrixA = cbind(c(10 ^ (seq(0.25, 20, 0.25))), HDI_output)
+MatrixB = MatrixA[(MatrixA[,2] > 0),]
+MatrixC = MatrixA[(MatrixA[,3] > 0),]
+polygon(c(MatrixC[,1], rev(MatrixB[,1])), c(MatrixC[,3], rev(MatrixB[,2])), col = rgb(0, 0, 1, 0.2),border = NA) 
+
+#Plot log-normal distribution
+lnorm_data=rlnorm(n=500000, meanlog=median(mcmcChain[,"muOfLog"]), sdlog=median(mcmcChain[,"sigmaOfLog"]))
+lnorm_x=sort(lnorm_data)
+lnorm_y = 1 - ecdf(lnorm_data)(sort(lnorm_data) )
+lines(lnorm_x,lnorm_y, col="blue", lwd=1,lty=1)
+
+point_x = sort(C)
+point_y = 1-ecdf(C)(sort(C))
+points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0.75)
+
+dev.off()
+
+#### Gamma - Model ---------------------------
+# THE MODEL.
+modelstring ="
+model {
+for( i in 1 : N ) {
+   
+    #Likelihood Gamma distribution
+    
+    C[i] ~ dgamma(shape,rate)
+    
+  }
+  # Prior
+  shape ~ dgamma(0.01, 0.01)
+  rate ~ dgamma(0.01, 0.01)
+}  
+  
+" # close quote for modelstring
+writeLines(modelstring,con="model.txt")
+
+# RUN THE CHAINS
+require(rjags)
+parameters = c("shape","rate") 
+adaptSteps = 5000         # Number of steps to "tune" the samplers.
+burnInSteps = 5000        # Number of steps to "burn-in" the samplers.
+nChains = 3               # Number of chains to run.
+numSavedSteps=10000       # Total number of steps in chains to save.
+thinSteps=1               # Number of steps to "thin" (1=keep every step).
+nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain.
+# Create, initialize, and adapt the model:
+perc_ESBL_alt_gamma = jags.model( "model.txt" , data=dataList ,
+                                  n.chains=nChains , n.adapt=adaptSteps )
+# Burn-in:
+cat( "Burning in the MCMC chain...\n" )
+update(perc_ESBL_alt_gamma, n.iter=burnInSteps )
+# The saved MCMC chain:
+cat( "Sampling final MCMC chain...\n" )
+mcmcCoda = coda.samples(perc_ESBL_alt_gamma, variable.names=parameters ,
+                        n.iter=nPerChain , thin=thinSteps )
+
+##### Examine results-DIC-----------------------------------------------------------------------------
+# Convert coda-object codaSamples to matrix object for easier handling.
+mcmcChain = as.matrix( mcmcCoda )
+chainLength = NROW(mcmcChain)
+
+# Display diagnostics of chain, for specified parameters:
+parameterNames = varnames(mcmcCoda)
+for ( parName in parameterNames ) {
+  diagMCMC( codaObject=mcmcCoda , parName=parName)
+}
+
+median(mcmcChain[,"shape"])
+median(mcmcChain[,"rate"])
+
+dic.samples(perc_ESBL_alt_gamma, 10000)
+##### Plot CCDF ------------------------------------------------------------------------------
+tiff(file = paste("Alt_gamma.tiff", sep = ""), width = 2000, height = 2000, 
+     units = "px",res = 1000, pointsize = 7)
+
+options(scipen = 0)
+point_x = 1
+point_y = 1
+myTicks<-c(1.0E-1,1.0E+0, 1.0E+1)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+par(cex.lab = 0.8)
+
+plot(point_x, point_y, col="white", pch = 19, main = expression(paste("Altenrhein Gamma")), xlab = expression(paste("ESBL-", italic("E. coli"), " (%)")), ylab =  expression(paste("Fraction of samples above the percentage")), xaxt="n", xlim = range(myTicks),ylim=c(0.001, 1),
+     font.lab = 1, log='xy')
+axis(side = 1, at = myTicks)
+
+
+#Plot uncertainty log-normal distribution 
+#Simulating uncertainty interval:
+HDI_output = matrix(1:160, nrow = 80, ncol = 2)
+pb = txtProgressBar(min = 0, max = 80, initial = 0, style = 3)
+cat("Simulating uncertainty interval...\n")
+
+for (j in seq(1, 80, 1)) {
+  output <- numeric(length = nrow(mcmcChain))
+  for (i in 1:nrow(mcmcChain)) {            
+    output[[i]] = 1-pgamma(10 ^ (j / 4), shape = mcmcChain[i,"shape"], rate = mcmcChain[i,"rate"])
+  }
+  HDI_output[j, ] = HDIofMCMC(output, 0.95)
+  setTxtProgressBar(pb,j)
+}
+
+# Representation of the interval as a surface:
+MatrixA = cbind(c(10 ^ (seq(0.25, 20, 0.25))), HDI_output)
+MatrixB = MatrixA[(MatrixA[,2] > 0),]
+MatrixC = MatrixA[(MatrixA[,3] > 0),]
+polygon(c(MatrixC[,1], rev(MatrixB[,1])), c(MatrixC[,3], rev(MatrixB[,2])), col = rgb(0, 0, 1, 0.2),border = NA) 
+
+#Plot gamma distribution
+gamma_data=rgamma(n=500000, shape=median(mcmcChain[,"shape"]), rate=median(mcmcChain[,"rate"]))
+gamma_x=sort(gamma_data)
+gamma_y = 1 - ecdf(gamma_data)(sort(gamma_data) )
+lines(gamma_x,gamma_y, col="blue", lwd=1,lty=1)
+
+point_x = sort(C)
+point_y = 1-ecdf(C)(sort(C))
+points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0.75)
+
+dev.off()
+
+###Chur----------------
+df_per_chu = df %>% filter(wwtp == "ARA Chur")
+C = as.numeric(df_per_chu[, "average_ESBL_Ec"])
+N = length(C)
+
+####Log Normal - Model ---------------------------
+# Package the data for shipping to JAGS:
+dataList = list(
+  C = C ,
+  N = N
+)
+
+# THE MODEL.
+modelstring ="
+model {
+for( i in 1 : N ) {
+
+#Likelihood LN 
+
+C[i] ~ dlnorm(muOfLog,1/sigmaOfLog^2) 
+}
+# Prior 
+muOfLog ~ dunif( -100 , 100)
+sigmaOfLog ~ dexp(0.1)
+
+}
+" # close quote for modelstring
+writeLines(modelstring,con="model.txt")
+
+# RUN THE CHAINS
+require(rjags)
+parameters = c("muOfLog","sigmaOfLog") 
+adaptSteps = 5000         # Number of steps to "tune" the samplers.
+burnInSteps = 5000        # Number of steps to "burn-in" the samplers.
+nChains = 3               # Number of chains to run.
+numSavedSteps=10000       # Total number of steps in chains to save.
+thinSteps=1               # Number of steps to "thin" (1=keep every step).
+nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain.
+# Create, initialize, and adapt the model:
+perc_ESBL_chu_ln = jags.model( "model.txt" , data=dataList ,
+                               n.chains=nChains , n.adapt=adaptSteps )
+# Burn-in:
+cat( "Burning in the MCMC chain...\n" )
+update( perc_ESBL_chu_ln , n.iter=burnInSteps )
+# The saved MCMC chain:
+cat( "Sampling final MCMC chain...\n" )
+mcmcCoda = coda.samples( perc_ESBL_chu_ln , variable.names=parameters ,
+                         n.iter=nPerChain , thin=thinSteps )
+
+##### Examine results-DIC------------------------------------------------------------------------------
+# Convert coda-object codaSamples to matrix object for easier handling.
+mcmcChain = as.matrix( mcmcCoda )
+chainLength = NROW(mcmcChain)
+
+# Display diagnostics of chain, for specified parameters:
+parameterNames = varnames(mcmcCoda)
+for ( parName in parameterNames ) {
+  diagMCMC( codaObject=mcmcCoda , parName=parName)
+}
+
+median(mcmcChain[,"muOfLog"])
+median(mcmcChain[,"sigmaOfLog"])
+
+dic.samples(perc_ESBL_chu_ln, 10000)
+##### Plot CCDF ------------------------------------------------------------------------------
+tiff(file = paste("Chu_ln.tiff", sep = ""), width = 2000, height = 2000, 
+     units = "px",res = 1000, pointsize = 7)
+
+options(scipen = 0)
+point_x = 1
+point_y = 1
+myTicks<-c(1.0E-1,1.0E+0, 1.0E+1)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+par(cex.lab = 0.8)
+
+plot(point_x, point_y, col="white", pch = 19, main = expression(paste("Chur LogNormal")), xlab = expression(paste("ESBL-", italic("E. coli"), " (%)")), ylab =  expression(paste("Fraction of samples above the percentage")), xaxt="n", xlim = range(myTicks),ylim=c(0.001, 1),
+     font.lab = 1, log='xy')
+axis(side = 1, at = myTicks)
+
+#Plot uncertainty log-normal distribution
+#Simulating uncertainty interval:
+HDI_output = matrix(1:160 , nrow = 80, ncol = 2)
+pb = txtProgressBar(min = 0, max = 80, initial = 0, style = 3)
+cat("Simulating uncertainty interval...\n")
+
+for (j in seq(1, 80, 1)) {
+  output <- numeric(length = nrow(mcmcChain))
+  for (i in 1:nrow(mcmcChain)) {            
+    output[[i]] = 1-plnorm(10 ^ (j / 4), meanlog = mcmcChain[i,"muOfLog"], sdlog = mcmcChain[i,"sigmaOfLog"])
+  }
+  HDI_output[j, ] = HDIofMCMC(output, 0.95)
+  setTxtProgressBar(pb,j)
+}
+
+# Representation of the interval as a surface:
+MatrixA = cbind(c(10 ^ (seq(0.25, 20, 0.25))), HDI_output)
+MatrixB = MatrixA[(MatrixA[,2] > 0),]
+MatrixC = MatrixA[(MatrixA[,3] > 0),]
+polygon(c(MatrixC[,1], rev(MatrixB[,1])), c(MatrixC[,3], rev(MatrixB[,2])), col = rgb(0, 0, 1, 0.2),border = NA) 
+
+#Plot log-normal distribution
+lnorm_data=rlnorm(n=500000, meanlog=median(mcmcChain[,"muOfLog"]), sdlog=median(mcmcChain[,"sigmaOfLog"]))
+lnorm_x=sort(lnorm_data)
+lnorm_y = 1 - ecdf(lnorm_data)(sort(lnorm_data) )
+lines(lnorm_x,lnorm_y, col="blue", lwd=1,lty=1)
+
+point_x = sort(C)
+point_y = 1-ecdf(C)(sort(C))
+points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0.75)
+
+dev.off()
+
+#### Gamma - Model ---------------------------
+# THE MODEL.
+modelstring ="
+model {
+for( i in 1 : N ) {
+   
+    #Likelihood Gamma distribution
+    
+    C[i] ~ dgamma(shape,rate)
+    
+  }
+  # Prior
+  shape ~ dgamma(0.01, 0.01)
+  rate ~ dgamma(0.01, 0.01)
+}  
+  
+" # close quote for modelstring
+writeLines(modelstring,con="model.txt")
+
+# RUN THE CHAINS
+require(rjags)
+parameters = c("shape","rate") 
+adaptSteps = 5000         # Number of steps to "tune" the samplers.
+burnInSteps = 5000        # Number of steps to "burn-in" the samplers.
+nChains = 3               # Number of chains to run.
+numSavedSteps=10000       # Total number of steps in chains to save.
+thinSteps=1               # Number of steps to "thin" (1=keep every step).
+nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain.
+# Create, initialize, and adapt the model:
+perc_ESBL_chu_gamma = jags.model( "model.txt" , data=dataList ,
+                                  n.chains=nChains , n.adapt=adaptSteps )
+# Burn-in:
+cat( "Burning in the MCMC chain...\n" )
+update(perc_ESBL_chu_gamma, n.iter=burnInSteps )
+# The saved MCMC chain:
+cat( "Sampling final MCMC chain...\n" )
+mcmcCoda = coda.samples(perc_ESBL_chu_gamma, variable.names=parameters ,
+                        n.iter=nPerChain , thin=thinSteps )
+
+##### Examine results-DIC-----------------------------------------------------------------------------
+# Convert coda-object codaSamples to matrix object for easier handling.
+mcmcChain = as.matrix( mcmcCoda )
+chainLength = NROW(mcmcChain)
+
+# Display diagnostics of chain, for specified parameters:
+parameterNames = varnames(mcmcCoda)
+for ( parName in parameterNames ) {
+  diagMCMC( codaObject=mcmcCoda , parName=parName)
+}
+
+median(mcmcChain[,"shape"])
+median(mcmcChain[,"rate"])
+
+dic.samples(perc_ESBL_chu_gamma, 10000)
+##### Plot CCDF ------------------------------------------------------------------------------
+tiff(file = paste("Chu_gamma.tiff", sep = ""), width = 2000, height = 2000, 
+     units = "px",res = 1000, pointsize = 7)
+
+options(scipen = 0)
+point_x = 1
+point_y = 1
+myTicks<-c(1.0E-1,1.0E+0, 1.0E+1)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+par(cex.lab = 0.8)
+
+plot(point_x, point_y, col="white", pch = 19, main = expression(paste("Chur Gamma")), xlab = expression(paste("ESBL-", italic("E. coli"), " (%)")), ylab =  expression(paste("Fraction of samples above the percentage")), xaxt="n", xlim = range(myTicks),ylim=c(0.001, 1),
+     font.lab = 1, log='xy')
+axis(side = 1, at = myTicks)
+
+#Plot uncertainty log-normal distribution 
+#Simulating uncertainty interval:
+HDI_output = matrix(1:160, nrow = 80, ncol = 2)
+pb = txtProgressBar(min = 0, max = 80, initial = 0, style = 3)
+cat("Simulating uncertainty interval...\n")
+
+for (j in seq(1, 80, 1)) {
+  output <- numeric(length = nrow(mcmcChain))
+  for (i in 1:nrow(mcmcChain)) {            
+    output[[i]] = 1-pgamma(10 ^ (j / 4), shape = mcmcChain[i,"shape"], rate = mcmcChain[i,"rate"])
+  }
+  HDI_output[j, ] = HDIofMCMC(output, 0.95)
+  setTxtProgressBar(pb,j)
+}
+
+# Representation of the interval as a surface:
+MatrixA = cbind(c(10 ^ (seq(0.25, 20, 0.25))), HDI_output)
+MatrixB = MatrixA[(MatrixA[,2] > 0),]
+MatrixC = MatrixA[(MatrixA[,3] > 0),]
+polygon(c(MatrixC[,1], rev(MatrixB[,1])), c(MatrixC[,3], rev(MatrixB[,2])), col = rgb(0, 0, 1, 0.2),border = NA) 
+
+#Plot gamma distribution
+gamma_data=rgamma(n=500000, shape=median(mcmcChain[,"shape"]), rate=median(mcmcChain[,"rate"]))
+gamma_x=sort(gamma_data)
+gamma_y = 1 - ecdf(gamma_data)(sort(gamma_data) )
+lines(gamma_x,gamma_y, col="blue", lwd=1,lty=1)
+
+point_x = sort(C)
+point_y = 1-ecdf(C)(sort(C))
+points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0.75)
+
+dev.off()
+
+###Zürich----------------
+df_per_zur = df %>% filter(wwtp == "ARA Werdhölzli Zürich")
+C = as.numeric(df_per_zur[, "average_ESBL_Ec"])
+N = length(C)
+
+#### Log Normal - Model ---------------------------
+# Package the data for shipping to JAGS:
+dataList = list(
+  C = C ,
+  N = N
+)
+
+# THE MODEL.
+modelstring ="
+model {
+for( i in 1 : N ) {
+
+#Likelihood LN 
+
+C[i] ~ dlnorm(muOfLog,1/sigmaOfLog^2) 
+}
+# Prior 
+muOfLog ~ dunif( -100 , 100)
+sigmaOfLog ~ dexp(0.1)
+
+}
+" # close quote for modelstring
+writeLines(modelstring,con="model.txt")
+
+# RUN THE CHAINS
+require(rjags)
+parameters = c("muOfLog","sigmaOfLog") 
+adaptSteps = 5000         # Number of steps to "tune" the samplers.
+burnInSteps = 5000        # Number of steps to "burn-in" the samplers.
+nChains = 3               # Number of chains to run.
+numSavedSteps=10000       # Total number of steps in chains to save.
+thinSteps=1               # Number of steps to "thin" (1=keep every step).
+nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain.
+# Create, initialize, and adapt the model:
+perc_ESBL_zur_ln = jags.model( "model.txt" , data=dataList ,
+                               n.chains=nChains , n.adapt=adaptSteps )
+# Burn-in:
+cat( "Burning in the MCMC chain...\n" )
+update( perc_ESBL_zur_ln , n.iter=burnInSteps )
+# The saved MCMC chain:
+cat( "Sampling final MCMC chain...\n" )
+mcmcCoda = coda.samples( perc_ESBL_zur_ln , variable.names=parameters ,
+                         n.iter=nPerChain , thin=thinSteps )
+
+##### Examine results-DIC------------------------------------------------------------------------------
+# Convert coda-object codaSamples to matrix object for easier handling.
+mcmcChain = as.matrix( mcmcCoda )
+chainLength = NROW(mcmcChain)
+
+# Display diagnostics of chain, for specified parameters:
+parameterNames = varnames(mcmcCoda)
+for ( parName in parameterNames ) {
+  diagMCMC( codaObject=mcmcCoda , parName=parName)
+}
+
+median(mcmcChain[,"muOfLog"])
+median(mcmcChain[,"sigmaOfLog"])
+
+dic.samples(perc_ESBL_zur_ln, 10000)
+##### Plot CCDF ------------------------------------------------------------------------------
+tiff(file = paste("Zur_ln.tiff", sep = ""), width = 2000, height = 2000, 
+     units = "px",res = 1000, pointsize = 7)
+
+options(scipen = 0)
+point_x = 1
+point_y = 1
+myTicks<-c(1.0E-1,1.0E+0, 1.0E+1)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+par(cex.lab = 0.8)
+
+plot(point_x, point_y, col="white", pch = 19, main = expression(paste("Zürich LogNormal")), xlab = expression(paste("ESBL-", italic("E. coli"), " (%)")), ylab =  expression(paste("Fraction of samples above the percentage")), xaxt="n", xlim = range(myTicks),ylim=c(0.001, 1),
+     font.lab = 1, log='xy')
+axis(side = 1, at = myTicks)
+
+#Plot uncertainty log-normal distribution
+#Simulating uncertainty interval:
+HDI_output = matrix(1:160 , nrow = 80, ncol = 2)
+pb = txtProgressBar(min = 0, max = 80, initial = 0, style = 3)
+cat("Simulating uncertainty interval...\n")
+
+for (j in seq(1, 80, 1)) {
+  output <- numeric(length = nrow(mcmcChain))
+  for (i in 1:nrow(mcmcChain)) {            
+    output[[i]] = 1-plnorm(10 ^ (j / 4), meanlog = mcmcChain[i,"muOfLog"], sdlog = mcmcChain[i,"sigmaOfLog"])
+  }
+  HDI_output[j, ] = HDIofMCMC(output, 0.95)
+  setTxtProgressBar(pb,j)
+}
+
+# Representation of the interval as a surface:
+MatrixA = cbind(c(10 ^ (seq(0.25, 20, 0.25))), HDI_output)
+MatrixB = MatrixA[(MatrixA[,2] > 0),]
+MatrixC = MatrixA[(MatrixA[,3] > 0),]
+polygon(c(MatrixC[,1], rev(MatrixB[,1])), c(MatrixC[,3], rev(MatrixB[,2])), col = rgb(0, 0, 1, 0.2),border = NA) 
+
+#Plot log-normal distribution
+lnorm_data=rlnorm(n=500000, meanlog=median(mcmcChain[,"muOfLog"]), sdlog=median(mcmcChain[,"sigmaOfLog"]))
+lnorm_x=sort(lnorm_data)
+lnorm_y = 1 - ecdf(lnorm_data)(sort(lnorm_data) )
+lines(lnorm_x,lnorm_y, col="blue", lwd=1,lty=1)
+
+point_x = sort(C)
+point_y = 1-ecdf(C)(sort(C))
+points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0.75)
+
+dev.off()
+
+#### Gamma - Model ---------------------------
+# THE MODEL.
+modelstring ="
+model {
+for( i in 1 : N ) {
+   
+    #Likelihood Gamma distribution
+    
+    C[i] ~ dgamma(shape,rate)
+    
+  }
+  # Prior
+  shape ~ dgamma(0.01, 0.01)
+  rate ~ dgamma(0.01, 0.01)
+}  
+  
+" # close quote for modelstring
+writeLines(modelstring,con="model.txt")
+
+# RUN THE CHAINS
+require(rjags)
+parameters = c("shape","rate") 
+adaptSteps = 5000         # Number of steps to "tune" the samplers.
+burnInSteps = 5000        # Number of steps to "burn-in" the samplers.
+nChains = 3               # Number of chains to run.
+numSavedSteps=10000       # Total number of steps in chains to save.
+thinSteps=1               # Number of steps to "thin" (1=keep every step).
+nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain.
+# Create, initialize, and adapt the model:
+perc_ESBL_zur_gamma = jags.model( "model.txt" , data=dataList ,
+                                  n.chains=nChains , n.adapt=adaptSteps )
+# Burn-in:
+cat( "Burning in the MCMC chain...\n" )
+update(perc_ESBL_zur_gamma, n.iter=burnInSteps )
+# The saved MCMC chain:
+cat( "Sampling final MCMC chain...\n" )
+mcmcCoda = coda.samples(perc_ESBL_zur_gamma, variable.names=parameters ,
+                        n.iter=nPerChain , thin=thinSteps )
+
+##### Examine results-DIC-----------------------------------------------------------------------------
+# Convert coda-object codaSamples to matrix object for easier handling.
+mcmcChain = as.matrix( mcmcCoda )
+chainLength = NROW(mcmcChain)
+
+# Display diagnostics of chain, for specified parameters:
+parameterNames = varnames(mcmcCoda)
+for ( parName in parameterNames ) {
+  diagMCMC( codaObject=mcmcCoda , parName=parName)
+}
+
+median(mcmcChain[,"shape"])
+median(mcmcChain[,"rate"])
+
+dic.samples(perc_ESBL_zur_gamma, 10000)
+##### Plot CCDF ------------------------------------------------------------------------------
+tiff(file = paste("Zur_gamma.tiff", sep = ""), width = 2000, height = 2000, 
+     units = "px",res = 1000, pointsize = 7)
+
+options(scipen = 0)
+point_x = 1
+point_y = 1
+myTicks<-c(1.0E-1,1.0E+0, 1.0E+1)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+par(cex.lab = 0.8)
+
+plot(point_x, point_y, col="white", pch = 19, main = expression(paste("Zürich Gamma")), xlab = expression(paste("ESBL-", italic("E. coli"), " (%)")), ylab =  expression(paste("Fraction of samples above the percentage")), xaxt="n", xlim = range(myTicks),ylim=c(0.001, 1),
+     font.lab = 1, log='xy')
+axis(side = 1, at = myTicks)
+
+#Plot uncertainty log-normal distribution 
+#Simulating uncertainty interval:
+HDI_output = matrix(1:160, nrow = 80, ncol = 2)
+pb = txtProgressBar(min = 0, max = 80, initial = 0, style = 3)
+cat("Simulating uncertainty interval...\n")
+
+for (j in seq(1, 80, 1)) {
+  output <- numeric(length = nrow(mcmcChain))
+  for (i in 1:nrow(mcmcChain)) {            
+    output[[i]] = 1-pgamma(10 ^ (j / 4), shape = mcmcChain[i,"shape"], rate = mcmcChain[i,"rate"])
+  }
+  HDI_output[j, ] = HDIofMCMC(output, 0.95)
+  setTxtProgressBar(pb,j)
+}
+
+# Representation of the interval as a surface:
+MatrixA = cbind(c(10 ^ (seq(0.25, 20, 0.25))), HDI_output)
+MatrixB = MatrixA[(MatrixA[,2] > 0),]
+MatrixC = MatrixA[(MatrixA[,3] > 0),]
+polygon(c(MatrixC[,1], rev(MatrixB[,1])), c(MatrixC[,3], rev(MatrixB[,2])), col = rgb(0, 0, 1, 0.2),border = NA) 
+
+#Plot gamma distribution
+gamma_data=rgamma(n=500000, shape=median(mcmcChain[,"shape"]), rate=median(mcmcChain[,"rate"]))
+gamma_x=sort(gamma_data)
+gamma_y = 1 - ecdf(gamma_data)(sort(gamma_data) )
+lines(gamma_x,gamma_y, col="blue", lwd=1,lty=1)
+
+point_x = sort(C)
+point_y = 1-ecdf(C)(sort(C))
+points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0.75)
+
+dev.off()
+
+###Geneva----------------
+df_per_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
+C = as.numeric(df_per_gen[, "average_ESBL_Ec"])
+N = length(C)
+
+#### Log Normal - Model ---------------------------
+# Package the data for shipping to JAGS:
+dataList = list(
+  C = C ,
+  N = N
+)
+
+# THE MODEL.
+modelstring ="
+model {
+for( i in 1 : N ) {
+
+#Likelihood LN 
+
+C[i] ~ dlnorm(muOfLog,1/sigmaOfLog^2) 
+}
+# Prior 
+muOfLog ~ dunif( -100 , 100)
+sigmaOfLog ~ dexp(0.1)
+
+}
+" # close quote for modelstring
+writeLines(modelstring,con="model.txt")
+
+# RUN THE CHAINS
+require(rjags)
+parameters = c("muOfLog","sigmaOfLog") 
+adaptSteps = 5000         # Number of steps to "tune" the samplers.
+burnInSteps = 5000        # Number of steps to "burn-in" the samplers.
+nChains = 3               # Number of chains to run.
+numSavedSteps=10000       # Total number of steps in chains to save.
+thinSteps=1               # Number of steps to "thin" (1=keep every step).
+nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain.
+# Create, initialize, and adapt the model:
+perc_ESBL_gen_ln = jags.model( "model.txt" , data=dataList ,
+                               n.chains=nChains , n.adapt=adaptSteps )
+# Burn-in:
+cat( "Burning in the MCMC chain...\n" )
+update( perc_ESBL_gen_ln , n.iter=burnInSteps )
+# The saved MCMC chain:
+cat( "Sampling final MCMC chain...\n" )
+mcmcCoda = coda.samples( perc_ESBL_gen_ln , variable.names=parameters ,
+                         n.iter=nPerChain , thin=thinSteps )
+
+##### Examine results-DIC------------------------------------------------------------------------------
+# Convert coda-object codaSamples to matrix object for easier handling.
+mcmcChain = as.matrix( mcmcCoda )
+chainLength = NROW(mcmcChain)
+
+# Display diagnostics of chain, for specified parameters:
+parameterNames = varnames(mcmcCoda)
+for ( parName in parameterNames ) {
+  diagMCMC( codaObject=mcmcCoda , parName=parName)
+}
+
+median(mcmcChain[,"muOfLog"])
+median(mcmcChain[,"sigmaOfLog"])
+
+dic.samples(perc_ESBL_gen_ln, 10000)
+##### Plot CCDF ------------------------------------------------------------------------------
+tiff(file = paste("Gen_ln.tiff", sep = ""), width = 2000, height = 2000, 
+     units = "px",res = 1000, pointsize = 7)
+
+options(scipen = 0)
+point_x = 1
+point_y = 1
+myTicks<-c(1.0E-1,1.0E+0, 1.0E+1)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+par(cex.lab = 0.8)
+
+plot(point_x, point_y, col="white", pch = 19, main = expression(paste("Geneva LogNormal")), xlab = expression(paste("ESBL-", italic("E. coli"), " (%)")), ylab =  expression(paste("Fraction of samples above the percentage")), xaxt="n", xlim = range(myTicks),ylim=c(0.001, 1),
+     font.lab = 1, log='xy')
+axis(side = 1, at = myTicks)
+
+#Plot uncertainty log-normal distribution
+#Simulating uncertainty interval:
+HDI_output = matrix(1:160 , nrow = 80, ncol = 2)
+pb = txtProgressBar(min = 0, max = 80, initial = 0, style = 3)
+cat("Simulating uncertainty interval...\n")
+
+for (j in seq(1, 80, 1)) {
+  output <- numeric(length = nrow(mcmcChain))
+  for (i in 1:nrow(mcmcChain)) {            
+    output[[i]] = 1-plnorm(10 ^ (j / 4), meanlog = mcmcChain[i,"muOfLog"], sdlog = mcmcChain[i,"sigmaOfLog"])
+  }
+  HDI_output[j, ] = HDIofMCMC(output, 0.95)
+  setTxtProgressBar(pb,j)
+}
+
+# Representation of the interval as a surface:
+MatrixA = cbind(c(10 ^ (seq(0.25, 20, 0.25))), HDI_output)
+MatrixB = MatrixA[(MatrixA[,2] > 0),]
+MatrixC = MatrixA[(MatrixA[,3] > 0),]
+polygon(c(MatrixC[,1], rev(MatrixB[,1])), c(MatrixC[,3], rev(MatrixB[,2])), col = rgb(0, 0, 1, 0.2),border = NA) 
+
+#Plot log-normal distribution
+lnorm_data=rlnorm(n=500000, meanlog=median(mcmcChain[,"muOfLog"]), sdlog=median(mcmcChain[,"sigmaOfLog"]))
+lnorm_x=sort(lnorm_data)
+lnorm_y = 1 - ecdf(lnorm_data)(sort(lnorm_data) )
+lines(lnorm_x,lnorm_y, col="blue", lwd=1,lty=1)
+
+point_x = sort(C)
+point_y = 1-ecdf(C)(sort(C))
+points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0.75)
+
+dev.off()
+
+#### Gamma - Model ---------------------------
+# THE MODEL.
+modelstring ="
+model {
+for( i in 1 : N ) {
+   
+    #Likelihood Gamma distribution
+    
+    C[i] ~ dgamma(shape,rate)
+    
+  }
+  # Prior
+  shape ~ dgamma(0.01, 0.01)
+  rate ~ dgamma(0.01, 0.01)
+}  
+  
+" # close quote for modelstring
+writeLines(modelstring,con="model.txt")
+
+# RUN THE CHAINS
+require(rjags)
+parameters = c("shape","rate") 
+adaptSteps = 5000         # Number of steps to "tune" the samplers.
+burnInSteps = 5000        # Number of steps to "burn-in" the samplers.
+nChains = 3               # Number of chains to run.
+numSavedSteps=10000       # Total number of steps in chains to save.
+thinSteps=1               # Number of steps to "thin" (1=keep every step).
+nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain.
+# Create, initialize, and adapt the model:
+perc_ESBL_gen_gamma = jags.model( "model.txt" , data=dataList ,
+                                  n.chains=nChains , n.adapt=adaptSteps )
+# Burn-in:
+cat( "Burning in the MCMC chain...\n" )
+update(perc_ESBL_gen_gamma, n.iter=burnInSteps )
+# The saved MCMC chain:
+cat( "Sampling final MCMC chain...\n" )
+mcmcCoda = coda.samples(perc_ESBL_gen_gamma, variable.names=parameters ,
+                        n.iter=nPerChain , thin=thinSteps )
+
+##### Examine results-DIC-----------------------------------------------------------------------------
+# Convert coda-object codaSamples to matrix object for easier handling.
+mcmcChain = as.matrix( mcmcCoda )
+chainLength = NROW(mcmcChain)
+
+# Display diagnostics of chain, for specified parameters:
+parameterNames = varnames(mcmcCoda)
+for ( parName in parameterNames ) {
+  diagMCMC( codaObject=mcmcCoda , parName=parName)
+}
+
+median(mcmcChain[,"shape"])
+median(mcmcChain[,"rate"])
+
+dic.samples(perc_ESBL_gen_gamma, 10000)
+
+##### Plot CCDF ------------------------------------------------------------------------------
+tiff(file = paste("Gen_gamma.tiff", sep = ""), width = 2000, height = 2000, 
+     units = "px",res = 1000, pointsize = 7)
+
+options(scipen = 0)
+point_x = 1
+point_y = 1
+myTicks<-c(1.0E-1,1.0E+0, 1.0E+1)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+par(cex.lab = 0.8)
+
+plot(point_x, point_y, col="white", pch = 19, main = expression(paste("Geneva Gamma")), xlab = expression(paste("ESBL-", italic("E. coli"), " (%)")), ylab =  expression(paste("Fraction of samples above the percentage")), xaxt="n", xlim = range(myTicks),ylim=c(0.001, 1),
+     font.lab = 1, log='xy')
+axis(side = 1, at = myTicks)
+
+#Plot uncertainty log-normal distribution 
+#Simulating uncertainty interval:
+HDI_output = matrix(1:160, nrow = 80, ncol = 2)
+pb = txtProgressBar(min = 0, max = 80, initial = 0, style = 3)
+cat("Simulating uncertainty interval...\n")
+
+for (j in seq(1, 80, 1)) {
+  output <- numeric(length = nrow(mcmcChain))
+  for (i in 1:nrow(mcmcChain)) {            
+    output[[i]] = 1-pgamma(10 ^ (j / 4), shape = mcmcChain[i,"shape"], rate = mcmcChain[i,"rate"])
+  }
+  HDI_output[j, ] = HDIofMCMC(output, 0.95)
+  setTxtProgressBar(pb,j)
+}
+
+# Representation of the interval as a surface:
+MatrixA = cbind(c(10 ^ (seq(0.25, 20, 0.25))), HDI_output)
+MatrixB = MatrixA[(MatrixA[,2] > 0),]
+MatrixC = MatrixA[(MatrixA[,3] > 0),]
+polygon(c(MatrixC[,1], rev(MatrixB[,1])), c(MatrixC[,3], rev(MatrixB[,2])), col = rgb(0, 0, 1, 0.2),border = NA) 
+
+#Plot gamma distribution
+gamma_data=rgamma(n=500000, shape=median(mcmcChain[,"shape"]), rate=median(mcmcChain[,"rate"]))
+gamma_x=sort(gamma_data)
+gamma_y = 1 - ecdf(gamma_data)(sort(gamma_data) )
+lines(gamma_x,gamma_y, col="blue", lwd=1,lty=1)
+
+point_x = sort(C)
+point_y = 1-ecdf(C)(sort(C))
+points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0.75)
+
+dev.off()
+
+###Lugano----------------
+df_per_lug = df %>% filter(wwtp == "IDA CDA Lugano")
+C = as.numeric(df_per_lug[, "average_ESBL_Ec"])
+N = length(C)
+
+#### Log Normal - Model ---------------------------
+# Package the data for shipping to JAGS:
+dataList = list(
+  C = C ,
+  N = N
+)
+
+# THE MODEL.
+modelstring ="
+model {
+for( i in 1 : N ) {
+
+#Likelihood LN 
+
+C[i] ~ dlnorm(muOfLog,1/sigmaOfLog^2) 
+}
+# Prior 
+muOfLog ~ dunif( -100 , 100)
+sigmaOfLog ~ dexp(0.1)
+
+}
+" # close quote for modelstring
+writeLines(modelstring,con="model.txt")
+
+# RUN THE CHAINS
+require(rjags)
+parameters = c("muOfLog","sigmaOfLog") 
+adaptSteps = 5000         # Number of steps to "tune" the samplers.
+burnInSteps = 5000        # Number of steps to "burn-in" the samplers.
+nChains = 3               # Number of chains to run.
+numSavedSteps=10000       # Total number of steps in chains to save.
+thinSteps=1               # Number of steps to "thin" (1=keep every step).
+nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain.
+# Create, initialize, and adapt the model:
+perc_ESBL_lug_ln = jags.model( "model.txt" , data=dataList ,
+                               n.chains=nChains , n.adapt=adaptSteps )
+# Burn-in:
+cat( "Burning in the MCMC chain...\n" )
+update( perc_ESBL_lug_ln , n.iter=burnInSteps )
+# The saved MCMC chain:
+cat( "Sampling final MCMC chain...\n" )
+mcmcCoda = coda.samples( perc_ESBL_lug_ln , variable.names=parameters ,
+                         n.iter=nPerChain , thin=thinSteps )
+
+##### Examine results-DIC------------------------------------------------------------------------------
+# Convert coda-object codaSamples to matrix object for easier handling.
+mcmcChain = as.matrix( mcmcCoda )
+chainLength = NROW(mcmcChain)
+
+# Display diagnostics of chain, for specified parameters:
+parameterNames = varnames(mcmcCoda)
+for ( parName in parameterNames ) {
+  diagMCMC( codaObject=mcmcCoda , parName=parName)
+}
+
+median(mcmcChain[,"muOfLog"])
+median(mcmcChain[,"sigmaOfLog"])
+
+dic.samples(perc_ESBL_lug_ln, 10000)
+##### Plot CCDF ------------------------------------------------------------------------------
+tiff(file = paste("Lug_ln.tiff", sep = ""), width = 2000, height = 2000, 
+     units = "px",res = 1000, pointsize = 7)
+
+options(scipen = 0)
+point_x = 1
+point_y = 1
+myTicks<-c(1.0E-1,1.0E+0, 1.0E+1)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+par(cex.lab = 0.8)
+
+plot(point_x, point_y, col="white", pch = 19, main = expression(paste("Lugano LogNormal")), xlab = expression(paste("ESBL-", italic("E. coli"), " (%)")), ylab =  expression(paste("Fraction of samples above the percentage")), xaxt="n", xlim = range(myTicks),ylim=c(0.001, 1),
+     font.lab = 1, log='xy')
+axis(side = 1, at = myTicks)
+
+#Plot uncertainty log-normal distribution
+#Simulating uncertainty interval:
+HDI_output = matrix(1:160 , nrow = 80, ncol = 2)
+pb = txtProgressBar(min = 0, max = 80, initial = 0, style = 3)
+cat("Simulating uncertainty interval...\n")
+
+for (j in seq(1, 80, 1)) {
+  output <- numeric(length = nrow(mcmcChain))
+  for (i in 1:nrow(mcmcChain)) {            
+    output[[i]] = 1-plnorm(10 ^ (j / 4), meanlog = mcmcChain[i,"muOfLog"], sdlog = mcmcChain[i,"sigmaOfLog"])
+  }
+  HDI_output[j, ] = HDIofMCMC(output, 0.95)
+  setTxtProgressBar(pb,j)
+}
+
+# Representation of the interval as a surface:
+MatrixA = cbind(c(10 ^ (seq(0.25, 20, 0.25))), HDI_output)
+MatrixB = MatrixA[(MatrixA[,2] > 0),]
+MatrixC = MatrixA[(MatrixA[,3] > 0),]
+polygon(c(MatrixC[,1], rev(MatrixB[,1])), c(MatrixC[,3], rev(MatrixB[,2])), col = rgb(0, 0, 1, 0.2),border = NA) 
+
+#Plot log-normal distribution
+lnorm_data=rlnorm(n=500000, meanlog=median(mcmcChain[,"muOfLog"]), sdlog=median(mcmcChain[,"sigmaOfLog"]))
+lnorm_x=sort(lnorm_data)
+lnorm_y = 1 - ecdf(lnorm_data)(sort(lnorm_data) )
+lines(lnorm_x,lnorm_y, col="blue", lwd=1,lty=1)
+
+point_x = sort(C)
+point_y = 1-ecdf(C)(sort(C))
+points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0.75)
+
+dev.off()
+
+#### Gamma - Model ---------------------------
+# THE MODEL.
+modelstring ="
+model {
+for( i in 1 : N ) {
+   
+    #Likelihood Gamma distribution
+    
+    C[i] ~ dgamma(shape,rate)
+    
+  }
+  # Prior
+  shape ~ dgamma(0.01, 0.01)
+  rate ~ dgamma(0.01, 0.01)
+}  
+  
+" # close quote for modelstring
+writeLines(modelstring,con="model.txt")
+
+# RUN THE CHAINS
+require(rjags)
+parameters = c("shape","rate") 
+adaptSteps = 5000         # Number of steps to "tune" the samplers.
+burnInSteps = 5000        # Number of steps to "burn-in" the samplers.
+nChains = 3               # Number of chains to run.
+numSavedSteps=10000       # Total number of steps in chains to save.
+thinSteps=1               # Number of steps to "thin" (1=keep every step).
+nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain.
+# Create, initialize, and adapt the model:
+perc_ESBL_lug_gamma = jags.model( "model.txt" , data=dataList ,
+                                  n.chains=nChains , n.adapt=adaptSteps )
+# Burn-in:
+cat( "Burning in the MCMC chain...\n" )
+update(perc_ESBL_lug_gamma, n.iter=burnInSteps )
+# The saved MCMC chain:
+cat( "Sampling final MCMC chain...\n" )
+mcmcCoda = coda.samples(perc_ESBL_lug_gamma, variable.names=parameters ,
+                        n.iter=nPerChain , thin=thinSteps )
+
+##### Examine results-DIC-----------------------------------------------------------------------------
+# Convert coda-object codaSamples to matrix object for easier handling.
+mcmcChain = as.matrix( mcmcCoda )
+chainLength = NROW(mcmcChain)
+
+# Display diagnostics of chain, for specified parameters:
+parameterNames = varnames(mcmcCoda)
+for ( parName in parameterNames ) {
+  diagMCMC( codaObject=mcmcCoda , parName=parName)
+}
+
+median(mcmcChain[,"shape"])
+median(mcmcChain[,"rate"])
+
+dic.samples(perc_ESBL_lug_gamma, 10000)
+##### Plot CCDF ------------------------------------------------------------------------------
+tiff(file = paste("Lug_gamma.tiff", sep = ""), width = 2000, height = 2000, 
+     units = "px",res = 1000, pointsize = 7)
+
+options(scipen = 0)
+point_x = 1
+point_y = 1
+myTicks<-c(1.0E-1,1.0E+0, 1.0E+1)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+par(cex.lab = 0.8)
+
+plot(point_x, point_y, col="white", pch = 19, main = expression(paste("Lugano Gamma")), xlab = expression(paste("ESBL-", italic("E. coli"), " (%)")), ylab =  expression(paste("Fraction of samples above the percentage")), xaxt="n", xlim = range(myTicks),ylim=c(0.001, 1),
+     font.lab = 1, log='xy')
+axis(side = 1, at = myTicks)
+
+#Plot uncertainty log-normal distribution 
+#Simulating uncertainty interval:
+HDI_output = matrix(1:160, nrow = 80, ncol = 2)
+pb = txtProgressBar(min = 0, max = 80, initial = 0, style = 3)
+cat("Simulating uncertainty interval...\n")
+
+for (j in seq(1, 80, 1)) {
+  output <- numeric(length = nrow(mcmcChain))
+  for (i in 1:nrow(mcmcChain)) {            
+    output[[i]] = 1-pgamma(10 ^ (j / 4), shape = mcmcChain[i,"shape"], rate = mcmcChain[i,"rate"])
+  }
+  HDI_output[j, ] = HDIofMCMC(output, 0.95)
+  setTxtProgressBar(pb,j)
+}
+
+# Representation of the interval as a surface:
+MatrixA = cbind(c(10 ^ (seq(0.25, 20, 0.25))), HDI_output)
+MatrixB = MatrixA[(MatrixA[,2] > 0),]
+MatrixC = MatrixA[(MatrixA[,3] > 0),]
+polygon(c(MatrixC[,1], rev(MatrixB[,1])), c(MatrixC[,3], rev(MatrixB[,2])), col = rgb(0, 0, 1, 0.2),border = NA) 
+
+#Plot gamma distribution
+gamma_data=rgamma(n=500000, shape=median(mcmcChain[,"shape"]), rate=median(mcmcChain[,"rate"]))
+gamma_x=sort(gamma_data)
+gamma_y = 1 - ecdf(gamma_data)(sort(gamma_data) )
+lines(gamma_x,gamma_y, col="blue", lwd=1,lty=1)
+
+point_x = sort(C)
+point_y = 1-ecdf(C)(sort(C))
+points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0.75)
+
+dev.off()
+
+###Sensetal Laupen----------------
+df_per_sen = df %>% filter(wwtp == "ARA Sensetal Laupen")
+C = as.numeric(df_per_sen[, "average_ESBL_Ec"])
+N = length(C)
+
+#### Log Normal - Model ---------------------------
+# Package the data for shipping to JAGS:
+dataList = list(
+  C = C ,
+  N = N
+)
+
+# THE MODEL.
+modelstring ="
+model {
+for( i in 1 : N ) {
+
+#Likelihood LN 
+
+C[i] ~ dlnorm(muOfLog,1/sigmaOfLog^2) 
+}
+# Prior 
+muOfLog ~ dunif( -100 , 100)
+sigmaOfLog ~ dexp(0.1)
+
+}
+" # close quote for modelstring
+writeLines(modelstring,con="model.txt")
+
+# RUN THE CHAINS
+require(rjags)
+parameters = c("muOfLog","sigmaOfLog") 
+adaptSteps = 5000         # Number of steps to "tune" the samplers.
+burnInSteps = 5000        # Number of steps to "burn-in" the samplers.
+nChains = 3               # Number of chains to run.
+numSavedSteps=10000       # Total number of steps in chains to save.
+thinSteps=1               # Number of steps to "thin" (1=keep every step).
+nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain.
+# Create, initialize, and adapt the model:
+perc_ESBL_sen_ln = jags.model( "model.txt" , data=dataList ,
+                               n.chains=nChains , n.adapt=adaptSteps )
+# Burn-in:
+cat( "Burning in the MCMC chain...\n" )
+update( perc_ESBL_sen_ln , n.iter=burnInSteps )
+# The saved MCMC chain:
+cat( "Sampling final MCMC chain...\n" )
+mcmcCoda = coda.samples( perc_ESBL_sen_ln , variable.names=parameters ,
+                         n.iter=nPerChain , thin=thinSteps )
+
+##### Examine results-DIC------------------------------------------------------------------------------
+# Convert coda-object codaSamples to matrix object for easier handling.
+mcmcChain = as.matrix( mcmcCoda )
+chainLength = NROW(mcmcChain)
+
+# Display diagnostics of chain, for specified parameters:
+parameterNames = varnames(mcmcCoda)
+for ( parName in parameterNames ) {
+  diagMCMC( codaObject=mcmcCoda , parName=parName)
+}
+
+median(mcmcChain[,"muOfLog"])
+median(mcmcChain[,"sigmaOfLog"])
+
+dic.samples(perc_ESBL_sen_ln, 10000)
+##### Plot CCDF ------------------------------------------------------------------------------
+tiff(file = paste("Sen_ln.tiff", sep = ""), width = 2000, height = 2000, 
+     units = "px",res = 1000, pointsize = 7)
+
+options(scipen = 0)
+point_x = 1
+point_y = 1
+myTicks<-c(1.0E-1,1.0E+0, 1.0E+1)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+par(cex.lab = 0.8)
+
+plot(point_x, point_y, col="white", pch = 19, main = expression(paste("Sensetal LogNormal")), xlab = expression(paste("ESBL-", italic("E. coli"), " (%)")), ylab =  expression(paste("Fraction of samples above the percentage")), xaxt="n", xlim = range(myTicks),ylim=c(0.001, 1),
+     font.lab = 1, log='xy')
+axis(side = 1, at = myTicks)
+
+#Plot uncertainty log-normal distribution
+#Simulating uncertainty interval:
+HDI_output = matrix(1:160 , nrow = 80, ncol = 2)
+pb = txtProgressBar(min = 0, max = 80, initial = 0, style = 3)
+cat("Simulating uncertainty interval...\n")
+
+for (j in seq(1, 80, 1)) {
+  output <- numeric(length = nrow(mcmcChain))
+  for (i in 1:nrow(mcmcChain)) {            
+    output[[i]] = 1-plnorm(10 ^ (j / 4), meanlog = mcmcChain[i,"muOfLog"], sdlog = mcmcChain[i,"sigmaOfLog"])
+  }
+  HDI_output[j, ] = HDIofMCMC(output, 0.95)
+  setTxtProgressBar(pb,j)
+}
+
+# Representation of the interval as a surface:
+MatrixA = cbind(c(10 ^ (seq(0.25, 20, 0.25))), HDI_output)
+MatrixB = MatrixA[(MatrixA[,2] > 0),]
+MatrixC = MatrixA[(MatrixA[,3] > 0),]
+polygon(c(MatrixC[,1], rev(MatrixB[,1])), c(MatrixC[,3], rev(MatrixB[,2])), col = rgb(0, 0, 1, 0.2),border = NA) 
+
+#Plot log-normal distribution
+lnorm_data=rlnorm(n=500000, meanlog=median(mcmcChain[,"muOfLog"]), sdlog=median(mcmcChain[,"sigmaOfLog"]))
+lnorm_x=sort(lnorm_data)
+lnorm_y = 1 - ecdf(lnorm_data)(sort(lnorm_data) )
+lines(lnorm_x,lnorm_y, col="blue", lwd=1,lty=1)
+
+point_x = sort(C)
+point_y = 1-ecdf(C)(sort(C))
+points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0.75)
+
+dev.off()
+
+#### Gamma - Model ---------------------------
+# THE MODEL.
+modelstring ="
+model {
+for( i in 1 : N ) {
+   
+    #Likelihood Gamma distribution
+    
+    C[i] ~ dgamma(shape,rate)
+    
+  }
+  # Prior
+  shape ~ dgamma(0.01, 0.01)
+  rate ~ dgamma(0.01, 0.01)
+}  
+  
+" # close quote for modelstring
+writeLines(modelstring,con="model.txt")
+
+# RUN THE CHAINS
+require(rjags)
+parameters = c("shape","rate") 
+adaptSteps = 5000         # Number of steps to "tune" the samplers.
+burnInSteps = 5000        # Number of steps to "burn-in" the samplers.
+nChains = 3               # Number of chains to run.
+numSavedSteps=10000       # Total number of steps in chains to save.
+thinSteps=1               # Number of steps to "thin" (1=keep every step).
+nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain.
+# Create, initialize, and adapt the model:
+perc_ESBL_sen_gamma = jags.model( "model.txt" , data=dataList ,
+                                  n.chains=nChains , n.adapt=adaptSteps )
+# Burn-in:
+cat( "Burning in the MCMC chain...\n" )
+update(perc_ESBL_sen_gamma, n.iter=burnInSteps )
+# The saved MCMC chain:
+cat( "Sampling final MCMC chain...\n" )
+mcmcCoda = coda.samples(perc_ESBL_sen_gamma, variable.names=parameters ,
+                        n.iter=nPerChain , thin=thinSteps )
+
+##### Examine results-DIC-----------------------------------------------------------------------------
+# Convert coda-object codaSamples to matrix object for easier handling.
+mcmcChain = as.matrix( mcmcCoda )
+chainLength = NROW(mcmcChain)
+
+# Display diagnostics of chain, for specified parameters:
+parameterNames = varnames(mcmcCoda)
+for ( parName in parameterNames ) {
+  diagMCMC( codaObject=mcmcCoda , parName=parName)
+}
+
+median(mcmcChain[,"shape"])
+median(mcmcChain[,"rate"])
+
+dic.samples(perc_ESBL_sen_gamma, 10000)
+##### Plot CCDF ------------------------------------------------------------------------------
+tiff(file = paste("Sen_gamma.tiff", sep = ""), width = 2000, height = 2000, 
+     units = "px",res = 1000, pointsize = 7)
+
+options(scipen = 0)
+point_x = 1
+point_y = 1
+myTicks<-c(1.0E-1,1.0E+0, 1.0E+1)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+par(cex.lab = 0.8)
+
+plot(point_x, point_y, col="white", pch = 19, main = expression(paste("Sensetal Gamma")), xlab = expression(paste("ESBL-", italic("E. coli"), " (%)")), ylab =  expression(paste("Fraction of samples above the percentage")), xaxt="n", xlim = range(myTicks),ylim=c(0.001, 1),
+     font.lab = 1, log='xy')
+axis(side = 1, at = myTicks)
+
+#Plot uncertainty log-normal distribution 
+#Simulating uncertainty interval:
+HDI_output = matrix(1:160, nrow = 80, ncol = 2)
+pb = txtProgressBar(min = 0, max = 80, initial = 0, style = 3)
+cat("Simulating uncertainty interval...\n")
+
+for (j in seq(1, 80, 1)) {
+  output <- numeric(length = nrow(mcmcChain))
+  for (i in 1:nrow(mcmcChain)) {            
+    output[[i]] = 1-pgamma(10 ^ (j / 4), shape = mcmcChain[i,"shape"], rate = mcmcChain[i,"rate"])
+  }
+  HDI_output[j, ] = HDIofMCMC(output, 0.95)
+  setTxtProgressBar(pb,j)
+}
+
+# Representation of the interval as a surface:
+MatrixA = cbind(c(10 ^ (seq(0.25, 20, 0.25))), HDI_output)
+MatrixB = MatrixA[(MatrixA[,2] > 0),]
+MatrixC = MatrixA[(MatrixA[,3] > 0),]
+polygon(c(MatrixC[,1], rev(MatrixB[,1])), c(MatrixC[,3], rev(MatrixB[,2])), col = rgb(0, 0, 1, 0.2),border = NA) 
+
+#Plot gamma distribution
+gamma_data=rgamma(n=500000, shape=median(mcmcChain[,"shape"]), rate=median(mcmcChain[,"rate"]))
+gamma_x=sort(gamma_data)
+gamma_y = 1 - ecdf(gamma_data)(sort(gamma_data) )
+lines(gamma_x,gamma_y, col="blue", lwd=1,lty=1)
+
+point_x = sort(C)
+point_y = 1-ecdf(C)(sort(C))
+points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0.75)
+
+dev.off()
+
+###95% CI plotting-------------------------
+#df formatting
+df = filter(df, !is.na(average_ESBL_Ec))
+
+#Create dataframes
+sample_sizes = seq(1, 156, by = 1) #only for graphs up to 3x/week
+true_mean = 0
+
+df_alt = df %>% filter(wwtp == "ARA Altenrhein")
+alpha_alt = mean(df_alt$average_ESBL_Ec)^2/sd(df_alt$average_ESBL_Ec)^2
+beta_alt = mean(df_alt$average_ESBL_Ec)/sd(df_alt$average_ESBL_Ec)^2
+gmean_alt=alpha_alt/beta_alt
+se_alt <- sqrt(alpha_alt / beta_alt^2 / sample_sizes)
+CI_alt = se_alt*1.96
+
+data_alt <- data.frame(sample_sizes=sample_sizes, wwtp="ARA Altenrhein",
+                       CI=CI_alt)
+
+df_chu = df %>% filter(wwtp == "ARA Chur")
+alpha_chu = mean(df_chu$average_ESBL_Ec)^2/sd(df_chu$average_ESBL_Ec)^2
+beta_chu = mean(df_chu$average_ESBL_Ec)/sd(df_chu$average_ESBL_Ec)^2
+gmean_chu=alpha_chu/beta_chu
+se_chu <- sqrt(alpha_chu / beta_chu^2 / sample_sizes)
+CI_chu = se_chu*1.96
+
+data_chu <- data.frame(sample_sizes=sample_sizes, wwtp="ARA Chur",
+                       CI=CI_chu)
+
+df_zur = df %>% filter(wwtp == "ARA Werdhölzli Zürich")
+alpha_zur = mean(df_zur$average_ESBL_Ec)^2/sd(df_zur$average_ESBL_Ec)^2
+beta_zur = mean(df_zur$average_ESBL_Ec)/sd(df_zur$average_ESBL_Ec)^2
+gmean_zur=alpha_zur/beta_zur
+se_zur <- sqrt(alpha_zur / beta_zur^2 / sample_sizes)
+CI_zur = se_zur*1.96
+
+data_zur <- data.frame(sample_sizes=sample_sizes, wwtp="ARA Werdhölzli Zürich",
+                       CI=CI_zur)
+
+df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
+alpha_gen = mean(df_gen$average_ESBL_Ec)^2/sd(df_gen$average_ESBL_Ec)^2
+beta_gen = mean(df_gen$average_ESBL_Ec)/sd(df_gen$average_ESBL_Ec)^2
+gmean_gen=alpha_gen/beta_gen
+se_gen <- sqrt(alpha_gen / beta_gen^2 / sample_sizes)
+CI_gen = se_gen*1.96
+
+data_gen <- data.frame(sample_sizes=sample_sizes, wwtp="STEP d'Aïre Genève",
+                       CI=CI_gen)
+
+df_sen = df %>% filter(wwtp == "ARA Sensetal Laupen")
+alpha_sen = mean(df_sen$average_ESBL_Ec)^2/sd(df_sen$average_ESBL_Ec)^2
+beta_sen = mean(df_sen$average_ESBL_Ec)/sd(df_sen$average_ESBL_Ec)^2
+gmean_sen=alpha_sen/beta_sen
+se_sen <- sqrt(alpha_sen / beta_sen^2 / sample_sizes)
+CI_sen = se_sen*1.96
+
+data_sen <- data.frame(sample_sizes=sample_sizes, wwtp="ARA Sensetal Laupen",
+                       CI=CI_sen)
+
+df_lug = df %>% filter(wwtp == "IDA CDA Lugano")
+alpha_lug = mean(df_lug$average_ESBL_Ec)^2/sd(df_lug$average_ESBL_Ec)^2
+beta_lug = mean(df_lug$average_ESBL_Ec)/sd(df_lug$average_ESBL_Ec)^2
+gmean_lug=alpha_lug/beta_lug
+se_lug <- sqrt(alpha_lug / beta_lug^2 / sample_sizes)
+CI_lug = se_lug*1.96
+
+data_lug <- data.frame(sample_sizes=sample_sizes, wwtp="IDA CDA Lugano",
+                       CI=CI_lug)
+
+#Bind different df
+data <- rbind(data_alt, data_chu, data_zur, data_gen, data_sen, data_lug)
+
+# Generate plot
+tot=ggplot(data, aes(x = sample_sizes)) +
+  geom_line(aes(y = CI, color=wwtp), position = position_dodge(width = 0), linewidth=1, alpha=0.8) +
+  theme_minimal()+
+  scale_color_manual(values = c("IDA CDA Lugano" = "#a6d854ff", "ARA Altenrhein" = "#fc8d62ff", "ARA Sensetal Laupen" = "#e78ac3ff",
+                                "ARA Chur" = "#8da0cbff", "STEP d'Aïre Genève" = "#66c2a5ff", "ARA Werdhölzli Zürich" = "#ffd92fff")) +
+  theme(axis.text.x=element_text(angle=90), legend.position= "right")+
+  scale_x_continuous(breaks = c(1,12, 24, 52, 104, 156), labels = c("1x Year","1x Month", "2x Month", "1x Week", "2x Week", "3x Week"))+
+  xlab("Sampling Frequency") +
+  ylab("Width of 95% CI") +
+  labs(color="WWTP")+
+  geom_vline(xintercept = c(1, 12, 24, 52, 104, 156), linetype = "dotted")+
+  ggtitle(expression(paste("Percentage of ESBL- ", italic("E. coli"), " (%)")))
+
+print(tot)
+
+##Carriage estimation------
+###Define estimates-----------------
+#Gamma_mean of ESBL-Ec percentage in WW (%) (Xi)
+galt = 1.722433   
+gchu = 1.397264   
+ggen = 2.019172   
+gzur = 1.913655   
+glug = 1.970193   
+gsen = 1.373625   
+
+      #gamma mean calculated as: gamma_mean=alpha/beta , where 
+      #alpha = mean(ESBL_Ec_percentage)^2/sd(ESBL_Ec_percentage)^2
+      #beta = mean(ESBL_Ec_percentage)/sd(ESBL_Ec_percentage)^2
+      #These lines are not part of the code, they only inform about the formula used, variables do not exist.
+
+#95% CI of ESBL-E.coli percentage in each WWTP 
+CIalt=0.1955347
+CIchu=0.2167696
+CIgen=0.1807549
+CIzur=0.2522777
+CIlug=0.2267069
+CIsen=0.1521924
+  
+      #95 CI of gamma mean calculated as: 1.96*se, where 
+      #se = sqrt(alpha/beta^2 /sample_sizes)
+      #These lines are not part of the code, they only inform about the formula used, variables do not exist.
+  
+#Population connected to each WWTP (n° of inhabitants) (Pi)
+palt=64000
+pchu=55000
+pgen=454000
+pzur=471000
+plug=124000
+psen=62000
+
+###Whole Switzerland, with population adjusted ESBL-Ec percentage in WW----------------
 #S.E of population weighted mean
 #(SEMw)^2 = [n/(n-1)(∑Pi)^2]*[∑(Pi*Xi - P*Xw)^2-2*Xw*∑(Pi-P)(Pi*Xi - P*Xw)+Xw^2*∑(Pi-p)^2]
 
@@ -986,26 +2393,26 @@ calculate_SEMw <- function(Pi, Xi, Xw, P) {
 }
 
 # Replace Pi, Xi, Xw, and P with actual gamma mean and population size
-Pi <- c(64000, 55000, 454000, 471000, 124000, 62000)  # Population in each site
-Xi <- c(1.722433, 1.397264, 2.019172, 1.913655, 1.970193, 1.373625)  # Gamma mean ofESBL-Ec percentage in each site
+Pi <- c(palt, pchu, pgen, pzur, plug, psen)  # Population in each site
+Xi <- c(galt, gchu, ggen, gzur, glug, gsen)  # Gamma mean ofESBL-Ec percentage in each site
 Xw <- weighted.mean(Xi, Pi)  # Population-weighted mean over sites
 P <- mean(Pi)  # Mean of the population across sites
 
 SEMw <- calculate_SEMw(Pi, Xi, Xw, P)
 print(SEMw)
 
-CI = SEMw*1.96
-print(CI)
+CIch = SEMw*1.96
+print(CIch)
 
 # Create data frame for Switzerland
 data_ch <- data.frame(x = rep(seq(0.01, 1, by = 0.0001)),  
                       a = rep(c(Xw/100))) #a = population weighted mean of gamma_mean of each WWTP.
 
 data_ch_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                          a = c(Xw/100-CI/100)) #a = population weighted mean - CI of weighted mean
+                          a = c(Xw/100-CIch/100)) #a = population weighted mean - CI of weighted mean
 
 data_ch_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                          a = c(Xw/100+CI/100))
+                          a = c(Xw/100+CIch/100))
 
 # Calculate Y based on the function Y = a/x
 data_ch$Y <- data_ch$a / data_ch$x
@@ -1039,16 +2446,16 @@ ch <- ggplot(data_ch[data_ch$x >= Xw/100,], aes(x = x, y = Y)) +
 
 print(ch)
 
-####ARA Altenrhein with CI-------
+###ARA Altenrhein with CI-------
 # Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
 data_alt <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                   a = c(0.01722433))  #a = gamma_mean
+                   a = c(galt/100))  #a = gamma_mean
 
 data_alt_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                       a = c(0.01526898)) #a = gamma_mean - CI
+                       a = c(galt/100-CIalt/100)) #a = gamma_mean - CI
 
 data_alt_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.01917968)) #a = gamma_mean + CI
+                           a = c(galt/100+CIalt/100)) #a = gamma_mean + CI
 
 
 # Calculate Ys based on the function Y = a/x
@@ -1062,7 +2469,7 @@ data_alt$Ymin[data_alt$Ymin > 1] <- 1
 data_alt$Ymax[data_alt$Ymax > 1] <- 1
 
 # Create the plot
-a <- ggplot(data_alt[data_alt$x >= 0.01722433,], aes(x = x, y = Y)) +
+a <- ggplot(data_alt[data_alt$x >= galt/100,], aes(x = x, y = Y)) +
   geom_line(color="#fc8d62ff") +
   geom_ribbon(data=data_alt, 
               aes(ymin = Ymin, ymax = Ymax), fill = "#fc8d62ff", alpha = 0.3, colour=NA) +
@@ -1070,8 +2477,8 @@ a <- ggplot(data_alt[data_alt$x >= 0.01722433,], aes(x = x, y = Y)) +
     limits = c(0.005, 1),
     breaks = c(0.005, 0.01,0.1, 1),  
     labels = c(0.005, 0.01,0.1, 1)) +  
-  labs(x = "Proportion of ESBL-Ec out of total E. coli in the gut",
-       y = "Prevalence of ESBL-Ec carriage within the community") +
+  labs(x = expression(paste("Percentage of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in the gut")),
+       y = expression(paste("Prevalence of ESBL-", italic("E. coli"), " carriage within the community"))) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
@@ -1083,16 +2490,16 @@ a <- ggplot(data_alt[data_alt$x >= 0.01722433,], aes(x = x, y = Y)) +
   
 a
 
-####ARA Chur with CI-------
+###ARA Chur with CI-------
 # Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
 data_chu <- data.frame(x = seq(0.005, 1, by = 0.0001),  
-                       a = c(0.01397264))  #a = gamma_mean
+                       a = c(gchu/100))  #a = gamma_mean
 
 data_chu_min <- data.frame(x = seq(0.005, 1, by = 0.0001),  
-                           a = c(0.01180494)) #a = gamma_mean - CI
+                           a = c(gchu/100-CIchu/100)) #a = gamma_mean - CI
 
 data_chu_max <- data.frame(x = seq(0.005, 1, by = 0.0001),  
-                           a = c(0.01614034)) #a = gamma_mean + CI
+                           a = c(gchu/100+CIchu/100)) #a = gamma_mean + CI
 
 
 # Calculate Ys based on the function Y = a/x
@@ -1106,15 +2513,15 @@ data_chu$Ymin[data_chu$Ymin > 1] <- 1
 data_chu$Ymax[data_chu$Ymax > 1] <- 1
 
 # Create the plot
-b <- ggplot(data_chu[data_chu$x >= 0.01397264,], aes(x = x, y = Y)) +
+b <- ggplot(data_chu[data_chu$x >= gchu/100,], aes(x = x, y = Y)) +
   geom_line(color="#8da0cbff") +
   geom_ribbon(data = data_chu,aes(ymin = Ymin, ymax = Ymax), fill = "#8da0cbff", alpha = 0.3, colour=NA) +
   scale_x_log10(
     limits = c(0.005, 1),
     breaks = c( 0.005, 0.01, 0.1, 1),  
     labels = c( 0.005, 0.01, 0.1, 1)) +  
-  labs(x = "Proportion of ESBL-Ec out of total E. coli in the gut",
-       y = "Prevalence of ESBL-Ec carriage within the community") +
+  labs(x = expression(paste("Percentage of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in the gut")),
+       y = expression(paste("Prevalence of ESBL-", italic("E. coli"), " carriage within the community"))) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
@@ -1126,16 +2533,16 @@ b <- ggplot(data_chu[data_chu$x >= 0.01397264,], aes(x = x, y = Y)) +
 b
 
 
-####STEP d'Aïre Genève with CI-------
+###STEP d'Aïre Genève with CI-------
 # Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
 data_gen <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                       a = c(0.02019172))  #a = gamma_mean
+                       a = c(ggen/100))  #a = gamma_mean
 
 data_gen_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.01838417)) #a = gamma_mean - CI
+                           a = c(ggen/100-CIgen/100)) #a = gamma_mean - CI
 
 data_gen_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.02199927)) #a = gamma_mean + CI
+                           a = c(ggen/100+CIgen/100)) #a = gamma_mean + CI
 
 
 # Calculate Ys based on the function Y = a/x
@@ -1149,15 +2556,15 @@ data_gen$Ymin[data_gen$Ymin > 1] <- 1
 data_gen$Ymax[data_gen$Ymax > 1] <- 1
 
 # Create the plot
-c <- ggplot(data_gen[data_gen$x >= 0.02019172,], aes(x = x, y = Y)) +
+c <- ggplot(data_gen[data_gen$x >= ggen/100,], aes(x = x, y = Y)) +
   geom_line(color="#66c2a5ff") +
   geom_ribbon(data = data_gen,aes(ymin = Ymin, ymax = Ymax), fill = "#66c2a5ff", alpha = 0.3, colour=NA) +
   scale_x_log10(
     limits = c(0.005, 1),
     breaks = c( 0.005, 0.01, 0.1, 1),  
     labels = c( 0.005, 0.01, 0.1, 1)) +  
-  labs(x = "Proportion of ESBL-Ec out of total E. coli in the gut",
-       y = "Prevalence of ESBL-Ec carriage within the community") +
+  labs(x = expression(paste("Percentage of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in the gut")),
+       y = expression(paste("Prevalence of ESBL-", italic("E. coli"), " carriage within the community"))) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
@@ -1167,16 +2574,16 @@ c <- ggplot(data_gen[data_gen$x >= 0.02019172,], aes(x = x, y = Y)) +
   theme_minimal()+
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
 c
-####ARA Werdhölzli Zürich with CI-------
+###ARA Werdhölzli Zürich with CI-------
 # Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
 data_zur <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                       a = c(0.01913655))  #a = gamma_mean
+                       a = c(gzur/100))  #a = gamma_mean
 
 data_zur_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.01661377)) #a = gamma_mean - CI
+                           a = c(gzur/100-CIzur/100)) #a = gamma_mean - CI
 
 data_zur_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.02165933)) #a = gamma_mean + CI
+                           a = c(gzur/100+CIzur/100)) #a = gamma_mean + CI
 
 
 # Calculate Ys based on the function Y = a/x
@@ -1190,15 +2597,15 @@ data_zur$Ymin[data_zur$Ymin > 1] <- 1
 data_zur$Ymax[data_zur$Ymax > 1] <- 1
 
 # Create the plot
-d <- ggplot(data_zur[data_zur$x >= 0.01913655,], aes(x = x, y = Y)) +
+d <- ggplot(data_zur[data_zur$x >= gzur/100,], aes(x = x, y = Y)) +
   geom_line(color="#e78ac3ff") +
   geom_ribbon(data = data_zur,aes(ymin = Ymin, ymax = Ymax), fill = "#e78ac3ff", alpha = 0.3, colour=NA) +
   scale_x_log10(
     limits = c(0.005, 1),
     breaks = c( 0.005, 0.01, 0.1, 1),  
     labels = c( 0.005, 0.01, 0.1, 1)) +  
-  labs(x = "Proportion of ESBL-Ec out of total E. coli in the gut",
-       y = "Prevalence of ESBL-Ec carriage within the community") +
+  labs(x = expression(paste("Percentage of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in the gut")),
+       y = expression(paste("Prevalence of ESBL-", italic("E. coli"), " carriage within the community"))) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
@@ -1209,16 +2616,16 @@ d <- ggplot(data_zur[data_zur$x >= 0.01913655,], aes(x = x, y = Y)) +
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
 d
 
-####IDA CDA Lugano with CI-------
+###IDA CDA Lugano with CI-------
 # Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
 data_lug <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                       a = c(0.01970193))  #a = gamma_mean
+                       a = c(glug/100))  #a = gamma_mean
 
 data_lug_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.01743486)) #a = gamma_mean - CI
+                           a = c(glug/100-CIlug/100)) #a = gamma_mean - CI
 
 data_lug_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.021969)) #a = gamma_mean + CI
+                           a = c(glug/100+CIlug/100)) #a = gamma_mean + CI
 
 
 # Calculate Ys based on the function Y = a/x
@@ -1232,15 +2639,15 @@ data_lug$Ymin[data_lug$Ymin > 1] <- 1
 data_lug$Ymax[data_lug$Ymax > 1] <- 1
 
 # Create the plot
-e <- ggplot(data_lug[data_lug$x >= 0.01970193,], aes(x = x, y = Y)) +
+e <- ggplot(data_lug[data_lug$x >= glug/100,], aes(x = x, y = Y)) +
   geom_line(color="#ffd92fff") +
   geom_ribbon(data = data_lug,aes(ymin = Ymin, ymax = Ymax), fill = "#ffd92fff", alpha = 0.3, colour=NA) +
   scale_x_log10(
     limits = c(0.005, 1),
     breaks = c( 0.005, 0.01, 0.1, 1),  
     labels = c( 0.005, 0.01, 0.1, 1)) +  
-  labs(x = "Proportion of ESBL-Ec out of total E. coli in the gut",
-       y = "Prevalence of ESBL-Ec carriage within the community") +
+  labs(x = expression(paste("Percentage of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in the gut")),
+       y = expression(paste("Prevalence of ESBL-", italic("E. coli"), " carriage within the community"))) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
@@ -1251,16 +2658,16 @@ e <- ggplot(data_lug[data_lug$x >= 0.01970193,], aes(x = x, y = Y)) +
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
 e
 
-####ARA Sensetal Laupen with CI-------
+###ARA Sensetal Laupen with CI-------
 # Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
 data_sen <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                       a = c(0.01373625))  #a = gamma_mean
+                       a = c(gsen/100))  #a = gamma_mean
 
 data_sen_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.01221433)) #a = gamma_mean - CI
+                           a = c(gsen/100-CIsen/100)) #a = gamma_mean - CI
 
 data_sen_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                           a = c(0.01525817)) #a = gamma_mean + CI
+                           a = c(gsen/100+CIsen/100)) #a = gamma_mean + CI
 
 
 # Calculate Ys based on the function Y = a/x
@@ -1274,15 +2681,15 @@ data_sen$Ymin[data_sen$Ymin > 1] <- 1
 data_sen$Ymax[data_sen$Ymax > 1] <- 1
 
 # Create the plot
-f <- ggplot(data_sen[data_sen$x >= 0.01373625,], aes(x = x, y = Y)) +
+f <- ggplot(data_sen[data_sen$x >= gsen/100,], aes(x = x, y = Y)) +
   geom_line(color="#a6d854ff") +
   geom_ribbon(data = data_sen,aes(ymin = Ymin, ymax = Ymax), fill = "#a6d854ff", alpha = 0.3, colour=NA) +
   scale_x_log10(
     limits = c(0.005, 1),
     breaks = c( 0.005, 0.01, 0.1, 1),  
     labels = c( 0.005, 0.01, 0.1, 1)) +  
-  labs(x = "Proportion of ESBL-Ec out of total E. coli in the gut",
-       y = "Prevalence of ESBL-Ec carriage within the community") +
+  labs(x = expression(paste("Percentage of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in the gut")),
+       y = expression(paste("Prevalence of ESBL-", italic("E. coli"), " carriage within the community"))) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
@@ -1296,7 +2703,7 @@ f
 
 ggarrange(a,b, c, d, e, f,nrow = 2, ncol = 3, labels = c("A", "B", "C", "D","E", "F"))
 
-###CDF, mean and median of Bangladesh ESBL-E.coli percentage in the gut----------------
+##CDF, mean and median of Bangladesh ESBL-E.coli percentage in the gut----------------
 #Percentage of ESBL-E. coli out of total E. coli in the gut of children
 setwd("~/switchdrive/Institution/Manuscripts/ESBLEc_Monitoring_Pictures")
 df_bang = read.table("20231017_bangladesh_intestinalCarriage.txt", header= TRUE)

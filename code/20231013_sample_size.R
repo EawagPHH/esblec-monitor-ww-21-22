@@ -79,7 +79,6 @@ library(rjags)
 library(runjags)
 
 ##Altenrhein----------------
-#Percentage - Average ESBL E. coli (%)---------
 df_alt = df %>% filter(wwtp == "ARA Altenrhein")
 C = as.numeric(df_alt[, "average_ESBL_Ec"])
 N = length(C)
@@ -295,7 +294,6 @@ points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0
 dev.off()
 
 #Chur----------------
-##Percentage - Average ESBL E. coli (%)---------
 df_chu = df %>% filter(wwtp == "ARA Chur")
 C = as.numeric(df_chu[, "average_ESBL_Ec"])
 N = length(C)
@@ -510,7 +508,6 @@ points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0
 dev.off()
 
 #Zürich----------------
-##Percentage - Average ESBL E. coli (%)---------
 df_zur = df %>% filter(wwtp == "ARA Werdhölzli Zürich")
 C = as.numeric(df_zur[, "average_ESBL_Ec"])
 N = length(C)
@@ -725,7 +722,6 @@ points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0
 dev.off()
 
 #Geneva----------------
-##Percentage - Average ESBL E. coli (%)---------
 df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
 C = as.numeric(df_gen[, "average_ESBL_Ec"])
 N = length(C)
@@ -940,7 +936,6 @@ points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0
 dev.off()
 
 #Lugano----------------
-##Percentage - Average ESBL E. coli (%)---------
 df_lug = df %>% filter(wwtp == "IDA CDA Lugano")
 C = as.numeric(df_lug[, "average_ESBL_Ec"])
 N = length(C)
@@ -1155,7 +1150,6 @@ points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0
 dev.off()
 
 #Sensetal Laupen----------------
-##Percentage - Average ESBL E. coli (%)---------
 df_sen = df %>% filter(wwtp == "ARA Sensetal Laupen")
 C = as.numeric(df_sen[, "average_ESBL_Ec"])
 N = length(C)
@@ -1370,7 +1364,6 @@ points(point_x, point_y ,col = "black", bg = "red", pch = 21, lwd = 0.5, cex = 0
 dev.off()
 
 #S.E. plotting-------------------------
-##Percentage ESBL-Ec (%)------------------
 sample_sizes = seq(1, 156, by = 1) #only for graphs up to 3x/week
 true_mean = 0
 
