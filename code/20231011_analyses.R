@@ -1534,6 +1534,8 @@ ggarrange(a,b, c, d, e, f,nrow = 2, ncol = 3, labels = c("A", "B", "C", "D","E",
 
 ###CDF, mean and median of Bangladesh ESBL-E.coli percentage in the gut----------------
 #Percentage of ESBL-E. coli out of total E. coli in the gut of children
+setwd("~/switchdrive/Institution/Manuscripts/ESBLEc_Monitoring_Pictures")
+df_bang = read.table("20231017_bangladesh_intestinalCarriage.txt", header= TRUE)
 data <- c(100,
           100,
           100,
