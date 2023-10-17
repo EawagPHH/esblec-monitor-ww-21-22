@@ -97,120 +97,75 @@ df_chu = df %>% filter(wwtp == "ARA Chur")
 df_zur = df %>% filter(wwtp == "ARA Werdhölzli Zürich")
 df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
 
-            # Function to calculate the mean for each bootstrap sample
-            data = df_sen$average_ESBL_Ec
-            mean_func <- function(data, indices) {
-              mean(data[indices])
-            }
-            
-            # Set the number of bootstrap samples
-            num_boot_samples <- 1000
-            
-            # Perform bootstrapping to calculate the 95% CI for the mean
-            boot_results <- boot(data, mean_func, R = num_boot_samples)
-            
-            # Calculate the percentile-based confidence interval
-            confidence_interval <- quantile(boot_results$t, c(0.025, 0.975))
-            
-            # Print the confidence interval
-            print(confidence_interval)
-
-######SHEENA YOU NEED TO ADD THE VARIABLES OF COUNTS CFU/ML IN THE OVERALL STATISTICS CODE BELOW
 ##Calculate overall statistics------------------------
-# Define a function to calculate mean, standard deviation, median, quantiles, minimum, and maximum
-calculate_stats <- function(data, log_transform = FALSE) {
+# Define a function to calculate summary statistics
+calculate_stats <- function(data, log_transform = FALSE, exclude_mean_sd = FALSE) {
   if (log_transform) {
     data <- log10(data)
-    unit <- "log10"
-  } else {
-    unit <- ""
   }
   
-  mean_value <- round(mean(data, na.rm = TRUE), 1)
-  sd_value <- round(sd(data, na.rm = TRUE), 1)
-  median_value <- round(median(data, na.rm = TRUE), 1)
-  quantile_values <- quantile(data, na.rm = TRUE)
-  
-  formatted_quantiles <- sapply(quantile_values, function(x) {
-    if (x == 0) {
-      return(0)
-    } else {
-      power <- floor(log10(abs(x)))
-      mantissa <- round(x / 10^power, 1)
-      return(paste(mantissa, "x 10^", power, unit))
-    }
-  })
-  
+  mean_value <- ifelse(!exclude_mean_sd, mean(data, na.rm = TRUE), NA)
+  sd_value <- ifelse(!exclude_mean_sd, sd(data, na.rm = TRUE), NA)
+  median_value <- quantile(data, probs = 0.5, na.rm = TRUE)
+  quantile_values <- quantile(data, probs = c(0.25, 0.75), na.rm = TRUE)
   min_value <- min(data, na.rm = TRUE)
   max_value <- max(data, na.rm = TRUE)
   
-  formatted_min <- ifelse(log_transform, paste("10^", sprintf("%.2f", min_value), unit), sprintf("%.2f", min_value))
-  formatted_max <- ifelse(log_transform, paste("10^", sprintf("%.2f", max_value), unit), sprintf("%.2f", max_value))
-  
-  return(list(mean = mean_value, sd = sd_value, median = median_value, quantiles = formatted_quantiles, min = formatted_min, max = formatted_max))
+  return(list(mean = mean_value, sd = sd_value, median = median_value, quantiles = quantile_values, min = min_value, max = max_value))
 }
-# List of data frames
-data_frames <- list(df = df, df_sen = df_sen, df_lug = df_lug, df_alt = df_alt, df_chu = df_chu, df_zur = df_zur, df_gen = df_gen)
 
-# Loop through data frames and variables to calculate statistics
+# Define a function to format numbers in scientific notation
+format_scientific <- function(x) {
+  formatted_values <- sapply(x, function(val) {
+    power <- floor(log10(abs(val)))
+    mantissa <- round(val / 10^power, 2)
+    if (power == 0) {
+      return(paste(mantissa, "x 10^0"))
+    } else {
+      return(paste(mantissa, "x 10^", power))
+    }
+  })
+  return(formatted_values)
+}
+
+# List of data frames
+data_frames <- list("Switzerland" = df, "ARA Altenrhein" = df_alt, "ARA Chur" = df_chu,"STEP d'Aire Genève" = df_gen,"ARA Werdhölzli Zürich" = df_zur,
+                    "IDA CDA Lugano" = df_lug,"ARA Sensetal Laupen" = df_sen)
+
+# Define the variables for which you want to calculate summary statistics
+variables <- c("average_ESBL_Ec", "average_loads_tot_Ec", "average_loads_ESBL_Ec", "average_counts_tot_Ec", "average_counts_ESBL_Ec")
+
+# Define custom names for the variables in the output
+variable_names <- c("ESBL-Ec Percentage", "Total-Ec Loads", "ESBL-Ec Loads", "Total-Ec Counts", "ESBL-Ec Counts")
+
+# Variables for which to exclude mean and sd
+exclude_mean_sd <- c("average_ESBL_Ec", "average_counts_tot_Ec", "average_counts_ESBL_Ec")
+
+# Loop through data frames and variables to calculate and display summary statistics
 for (data_frame_name in names(data_frames)) {
   data_frame <- data_frames[[data_frame_name]]
   cat("Data Frame:", data_frame_name, "\n")
   
-  # Calculate statistics for average_ESBL_Ec without log transformation
-  stats_esbl <- calculate_stats(data_frame$average_ESBL_Ec)
-  cat("ESBL-Ec Percentage - Mean:", stats_esbl$mean, "- SD:", stats_esbl$sd, "- Median:", stats_esbl$median, "- Quantiles:", stats_esbl$quantiles, "- Min:", stats_esbl$min, "- Max:", stats_esbl$max, "\n")
-  
-  # Calculate statistics for average_loads_ESBL_Ec and average_loads_tot_Ec with log transformation
-  stats_loads_esbl <- calculate_stats(data_frame$average_loads_ESBL_Ec, TRUE)
-  cat("ESBL-Ec Loads (log10 transformed) - Mean:", stats_loads_esbl$mean, "- SD:", stats_loads_esbl$sd, "- Median:", stats_loads_esbl$median, "- Quantiles:", stats_loads_esbl$quantiles, "- Min:", stats_loads_esbl$min, "- Max:", stats_loads_esbl$max, "\n")
-  
-  stats_loads_tot <- calculate_stats(data_frame$average_loads_tot_Ec, TRUE)
-  cat("Total-Ec Loads (log10 transformed) - Mean:", stats_loads_tot$mean, "- SD:", stats_loads_tot$sd, "- Median:", stats_loads_tot$median, "- Quantiles:", stats_loads_tot$quantiles, "- Min:", stats_loads_tot$min, "- Max:", stats_loads_tot$max, "\n\n")
+  for (i in 1:length(variables)) {
+    variable_name <- variables[i]
+    output_name <- variable_names[i]
+    
+    log_transform <- variable_name %in% c("average_loads_tot_Ec", "average_loads_ESBL_Ec")
+    exclude_mean_sd_flag <- variable_name %in% exclude_mean_sd
+    
+    stats <- calculate_stats(data_frame[[variable_name]], log_transform, exclude_mean_sd_flag)
+    formatted_min <- format_scientific(stats$min)
+    formatted_max <- format_scientific(stats$max)
+    formatted_median <- format_scientific(stats$median)
+    formatted_quantiles <- format_scientific(stats$quantiles)
+    
+    cat(output_name, "- Mean:", ifelse(!exclude_mean_sd_flag, stats$mean, "NA"), 
+        "- SD:", ifelse(!exclude_mean_sd_flag, stats$sd, "NA"), "- Median:", formatted_median, 
+        "- 25th Quantile:", formatted_quantiles[1], "- 75th Quantile:", formatted_quantiles[2], 
+        "- Min:", formatted_min, "- Max:", formatted_max, "\n")
+  }
+  cat("\n")
 }
-
-            
-##Differences between months-------------------------------
-###Plots----------------------
-#percentage_ESBL_Ec
-per1=ggplot(data=df) +
-  geom_boxplot(aes(y=(average_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
-  geom_point(aes(y=(average_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"))) +
-  facet_wrap(wwtp~., ncol=1) +
-  theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1), axis.title.y=element_text(size=11),legend.position="bottom") +
-  ylab(expression(paste("Percentage of ESBL- ", italic("E. coli"), " (%)"))) +
-  scale_color_manual(name="", values = c("Single replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
-  scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
-  scale_y_continuous(breaks = c(1, 2, 3, 4, 5))+
-  xlab("")
-
-#loads_ESBL_Ec
-lre1=ggplot(data=df) +
-  geom_boxplot(aes(y=log10(average_loads_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
-  geom_point(aes(y=log10(average_loads_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(esblEc_loads_a) | is.na(esblEc_loads_b), "Unique replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), size=1.5) +
-  facet_wrap(wwtp~., ncol=1) +
-  theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1), axis.title.y=element_text(size=11),legend.position="none") +
-  ylab(expression(paste("loads ESBL- ", italic("E. coli"), " log10(CFUs/(person-day))"))) +
-  scale_color_manual(name="", values = c("Unique replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
-  scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
-  scale_y_continuous(breaks = c(7, 8, 9), labels=c("7" = expression(10^{7}), "8" =expression(10^{8}),
-                                                   "9" = expression(10^{9})))+
-  xlab("")
-
-#loads_tot_Ec
-lto1=ggplot(data=df) +
-  geom_boxplot(aes(y=log10(average_loads_tot_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
-  geom_point(aes(y=log10(average_loads_tot_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(totalEc_loads_a) | is.na(totalEc_loads_b), "Unique replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), size=1.5) +
-  facet_wrap(wwtp~., ncol=1) +
-  theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1), axis.title.y=element_text(size=11), legend.position="none") +
-  ylab(expression(paste("loads total ", italic("E. coli"), " log10(CFUs/(person-day))"))) +
-  scale_color_manual(name="", values = c("Unique replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
-  scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
-  scale_y_continuous(breaks = c(9, 10, 11), labels=c("9" = expression(10^{9}), "10" =expression(10^{10}),
-                                                     "11" = expression(10^{11})))+
-  xlab("")
-
-ggarrange(per1, lto1, lre1, ncol = 3, labels = c("A","B", "C"), common.legend = TRUE) #aggregate the three plots together
 
 ###ESBL-Ec to compare between wwtps------
 #percentage_ESBL_Ec
@@ -403,6 +358,48 @@ cdftot=ggplot(df_CDF_long, aes(x = x, y = CDF, color = wwtp)) +
 
 #####Plot CDF and Boxplots of WWTP differences----------------
 ggarrange(perpl, cdfper, ltopl, cdftot, lrepl, cdfesbl,nrow=3, ncol=2, labels=c("A", "B", "C", "D", "E", "F"), common.legend = TRUE)
+
+##Differences between months-------------------------------
+###Plots----------------------
+#percentage_ESBL_Ec
+per1=ggplot(data=df) +
+  geom_boxplot(aes(y=(average_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
+  geom_point(aes(y=(average_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"))) +
+  facet_wrap(wwtp~., ncol=1) +
+  theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1), axis.title.y=element_text(size=11),legend.position="bottom") +
+  ylab(expression(paste("Percentage of ESBL- ", italic("E. coli"), " (%)"))) +
+  scale_color_manual(name="", values = c("Single replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
+  scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
+  scale_y_continuous(breaks = c(1, 2, 3, 4, 5))+
+  xlab("")
+
+#loads_ESBL_Ec
+lre1=ggplot(data=df) +
+  geom_boxplot(aes(y=log10(average_loads_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
+  geom_point(aes(y=log10(average_loads_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(esblEc_loads_a) | is.na(esblEc_loads_b), "Unique replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), size=1.5) +
+  facet_wrap(wwtp~., ncol=1) +
+  theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1), axis.title.y=element_text(size=11),legend.position="none") +
+  ylab(expression(paste("loads ESBL- ", italic("E. coli"), " log10(CFUs/(person-day))"))) +
+  scale_color_manual(name="", values = c("Unique replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
+  scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
+  scale_y_continuous(breaks = c(7, 8, 9), labels=c("7" = expression(10^{7}), "8" =expression(10^{8}),
+                                                   "9" = expression(10^{9})))+
+  xlab("")
+
+#loads_tot_Ec
+lto1=ggplot(data=df) +
+  geom_boxplot(aes(y=log10(average_loads_tot_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
+  geom_point(aes(y=log10(average_loads_tot_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(totalEc_loads_a) | is.na(totalEc_loads_b), "Unique replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), size=1.5) +
+  facet_wrap(wwtp~., ncol=1) +
+  theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1), axis.title.y=element_text(size=11), legend.position="none") +
+  ylab(expression(paste("loads total ", italic("E. coli"), " log10(CFUs/(person-day))"))) +
+  scale_color_manual(name="", values = c("Unique replicate" = "darksalmon", "Averaged on two replicates" = "black"))+
+  scale_shape_manual(name="", values = c("Single replicate" = 17, "Averaged on two replicates" = 16))+
+  scale_y_continuous(breaks = c(9, 10, 11), labels=c("9" = expression(10^{9}), "10" =expression(10^{10}),
+                                                     "11" = expression(10^{11})))+
+  xlab("")
+
+ggarrange(per1, lto1, lre1, ncol = 3, labels = c("A","B", "C"), common.legend = TRUE) #aggregate the three plots together
 
 ### Environmental variables-------
 df$temperature=as.numeric(df$temperature)
@@ -1536,92 +1533,22 @@ ggarrange(a,b, c, d, e, f,nrow = 2, ncol = 3, labels = c("A", "B", "C", "D","E",
 #Percentage of ESBL-E. coli out of total E. coli in the gut of children
 setwd("~/switchdrive/Institution/Manuscripts/ESBLEc_Monitoring_Pictures")
 df_bang = read.table("20231017_bangladesh_intestinalCarriage.txt", header= TRUE)
-data <- c(100,
-          100,
-          100,
-          100,
-          2.66,
-          7.57995758,
-          2,
-          23,
-          2.142857143,
-          50.74076338,
-          0.49999125,
-          26.11111111,
-          10.41666667,
-          8.518518519,
-          1.6,
-          14.99999991,
-          0.183606557,
-          46.36363636,
-          0.116666667,
-          0.25,
-          0.928571429,
-          0.176470588,
-          0.54999695,
-          1.000001572,
-          0.272727273,
-          4.174666667,
-          0.17500065,
-          57.14285595,
-          41.84640523,
-          54.71698113,
-          0.023275864,
-          0.18571428,
-          2.314286,
-          0.935897436,
-          100,
-          4.166666667,
-          48.51485149,
-          74.15730337,
-          0.593023256,
-          100,
-          1.368932039,
-          0.130769231,
-          2.469879518,
-          100,
-          0.513513514,
-          8.307692308,
-          0.444833103,
-          57.46336996,
-          2.3125,
-          0.001894737,
-          7.631578947,
-          0.06085977,
-          0.033316049,
-          3.557692308,
-          0.004901961,
-          0.435897436,
-          0.083108091,
-          5.097270229,
-          0.120772947,
-          0.032837472,
-          1.757316641,
-          10,
-          0.081434263,
-          0.003781484,
-          0.083249093,
-          0.016056984,
-          0.869189907)
-
-# Create a dataframe from the data
-df <- data.frame(value = data) 
 
 # Create empirical CDF data
-df$ecdf <- ecdf(df$value)(df$value) 
+df_bang$ecdf <- ecdf(df_bang$percentage_esblEc)(df_bang$percentage_esblEc) 
 
 # Fit lognormal distribution to data
-fit <- fitdistr(df$value, "lognormal") 
+fit <- fitdistr(df_bang$percentage_esblEc, "lognormal") 
 
 # Generate fitted CDF values based on the lognormal parameters
-df$lognorm_cdf <- plnorm(df$value, meanlog = fit$estimate[1], sdlog = fit$estimate[2])
+df_bang$lognorm_cdf <- plnorm(df_bang$percentage_esblEc, meanlog = fit$estimate[1], sdlog = fit$estimate[2])
 
 # Calculate empirical arithmetic mean and median
-mean_val <- mean(df$value)
-median_val <- median(df$value)
+mean_val <- mean(df_bang$percentage_esblEc)
+median_val <- median(df_bang$percentage_esblEc)
 
 # Generate Plot
-ggplot(df, aes(x=value)) + 
+ggplot(df_bang, aes(percentage_esblEc)) + 
   geom_line(aes(y=ecdf, color="Empirical CDF"), size=1) +
   geom_line(aes(y=lognorm_cdf, color="Lognormal CDF"), linetype="solid", size=0.5) +
   scale_x_log10(labels = scales::comma) +
@@ -1633,7 +1560,7 @@ ggplot(df, aes(x=value)) +
     axis.ticks = element_line(colour = "black")
   ) +
   labs(
-    x = expression(paste("Percentage of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in the gut of children in Bangladesh")),
+    x = expression(paste("Percentage of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in the gut of children in Bangladesh (%)")),
     y = "CDF",
     title = paste("Lognormal Parameters: Meanlog =", round(fit$estimate[1], 3), 
                   "Sdlog =", round(fit$estimate[2], 3))) +
@@ -1643,11 +1570,3 @@ ggplot(df, aes(x=value)) +
                  aes(xintercept = mean_val), linetype = "dotted", color="black", alpha =1)+
   scale_color_manual("Legend", 
                      values = c("Empirical CDF" = "blue", "Lognormal CDF" = "red"))
-
-
-
-
-
-
-
-ggarrange(a,b, c, d, e, f,nrow = 2, ncol = 3, labels = c("A", "B", "C", "D","E", "F"))
