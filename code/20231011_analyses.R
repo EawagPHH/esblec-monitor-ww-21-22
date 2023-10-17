@@ -1232,8 +1232,8 @@ ch <- ggplot(data_ch[data_ch$x >= 0.0189804,], aes(x = x, y = Y)) +
     limits = c(0.005, 1),
     breaks = c(0.005, 0.01,0.1, 1),  
     labels = c(0.005, 0.01,0.1, 1)) +  
-  labs(x = "Proportion of ESBL-Ec out of total E. coli in the gut",
-       y = "Prevalence of ESBL-Ec carriage within the community") +
+  labs(x = expression(paste("Proportion of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in the gut")),
+       y = expression(paste("Prevalence of ESBL-", italic("E. coli"), " carriage within the community"))) +
   scale_y_continuous(
     limits = c(0, 1),
     breaks = seq(0, 1, by = 0.2)) +
