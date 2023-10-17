@@ -17,6 +17,8 @@ library(mgcv)
 library(data.table)
 library(scales)
 library(MASS)
+library(coin)
+library(dunn.test)
 
 ##Formatting df-------------------
 #Import datasets 
@@ -97,6 +99,36 @@ df_chu = df %>% filter(wwtp == "ARA Chur")
 df_zur = df %>% filter(wwtp == "ARA Werdhölzli Zürich")
 df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
 
+#Create a df without NAs for the variable ESBL-E. coli percentage
+df_filtered = filter(df, !is.na(average_ESBL_Ec)) 
+#Subset the new filtered df
+df_per_alt = df_filtered %>% filter(wwtp == "ARA Altenrhein")
+df_per_chu = df_filtered %>% filter(wwtp == "ARA Chur")
+df_per_gen = df_filtered %>% filter(wwtp == "STEP d'Aïre Genève")
+df_per_zur = df_filtered %>% filter(wwtp == "ARA Werdhölzli Zürich")
+df_per_lug = df_filtered %>% filter(wwtp == "IDA CDA Lugano")
+df_per_sen = df_filtered %>% filter(wwtp == "ARA Sensetal Laupen")
+
+#Create a df without NAs for the variable total-E. coli loads
+df_filtered_t = filter(df, !is.na(average_loads_tot_Ec)) 
+#Subset the new filtered df
+df_tot_alt = df_filtered_t %>% filter(wwtp == "ARA Altenrhein")
+df_tot_chu = df_filtered_t %>% filter(wwtp == "ARA Chur")
+df_tot_gen = df_filtered_t %>% filter(wwtp == "STEP d'Aïre Genève")
+df_tot_zur = df_filtered_t %>% filter(wwtp == "ARA Werdhölzli Z?rich")
+df_tot_lug = df_filtered_t %>% filter(wwtp == "IDA CDA Lugano")
+df_tot_sen = df_filtered_t %>% filter(wwtp == "ARA Sensetal Laupen")
+
+#Create a df without NAs for the variable ESBL-E. coli loads
+df_filtered_r = filter(df, !is.na(average_loads_ESBL_Ec)) 
+#Subset the new filtered df
+df_ESBL_alt = df_filtered_r %>% filter(wwtp == "ARA Altenrhein")
+df_ESBL_chu = df_filtered_r %>% filter(wwtp == "ARA Chur")
+df_ESBL_gen = df_filtered_r %>% filter(wwtp == "STEP d'Aïre Genève")
+df_ESBL_zur = df_filtered_r %>% filter(wwtp == "ARA Werdhölzli Zürich")
+df_ESBL_lug = df_filtered_r %>% filter(wwtp == "IDA CDA Lugano")
+df_ESBL_sen = df_filtered_r %>% filter(wwtp == "ARA Sensetal Laupen")
+
 ##Calculate overall statistics------------------------
 # Define a function to calculate summary statistics
 calculate_stats <- function(data, log_transform = FALSE, exclude_mean_sd = FALSE) {
@@ -167,30 +199,14 @@ for (data_frame_name in names(data_frames)) {
   cat("\n")
 }
 
-###ESBL-Ec to compare between wwtps------
-#percentage_ESBL_Ec
-#calculate median in each WWTP 
-df_sen = df %>% filter(wwtp == "ARA Sensetal Laupen")
-median(df_sen$average_ESBL_Ec, na.rm = T)
-
-df_lug = df %>% filter(wwtp == "IDA CDA Lugano")
-median(df_lug$average_ESBL_Ec, na.rm = T)
-
-df_alt = df %>% filter(wwtp == "ARA Altenrhein")
-median(df_alt$average_ESBL_Ec, na.rm = T)
-
-df_chu = df %>% filter(wwtp == "ARA Chur")
-median(df_chu$average_ESBL_Ec, na.rm = T)
-
-df_zur = df %>% filter(wwtp == "ARA Werdhölzli Zürich")
-median(df_zur$average_ESBL_Ec, na.rm = T)
-
-df_gen = df %>% filter(wwtp == "STEP d'Aïre Genève")
-median(df_gen$average_ESBL_Ec, na.rm = T)
-
+##Differences between WWTPs------
+###Plots--------------------
+####Percentage ESBL-E. coli-----------
+#Order WWTPs in descending median percentage of ESBL-E. coli
 m_o = c("STEP d'Aïre Genève", "IDA CDA Lugano","ARA Werdhölzli Zürich","ARA Altenrhein", "ARA Chur", "ARA Sensetal Laupen") #ordering WWTPs from highest to lowest percentage.
 df$wwtp <- factor(df$wwtp, levels = m_o)
 
+#Generate boxplot
 perpl=ggplot(data=df) +
   geom_boxplot(aes(y=(average_ESBL_Ec), x=wwtp), outlier.colour = NA, outlier.shape = NA) +
   geom_point(aes(y=(average_ESBL_Ec), x=wwtp, 
@@ -204,22 +220,40 @@ perpl=ggplot(data=df) +
   scale_y_continuous(breaks = c(1, 2, 3, 4,5))+
   xlab("")
 
-#loads_ESBL_Ec
-#calculate median in each WWTP 
-median(df_sen$average_loads_ESBL_Ec, na.rm = T)
+# calculate CDF
+df = filter(df, !is.na(average_ESBL_Ec)) #remove na.values from dataset
 
-median(df_lug$average_loads_ESBL_Ec, na.rm = T)
+CDF_list <- list() #Create a list to store CDF data for each wwtp
 
-median(df_alt$average_loads_ESBL_Ec, na.rm = T)
+for (wwtp in unique(df$wwtp)) { 
+  CDF_list[[wwtp]] <- ecdf(df$average_ESBL_Ec[df$wwtp == wwtp])
+} # Iterate through each wwtp and calculate its CDF using ecdf()
 
-median(df_chu$average_loads_ESBL_Ec, na.rm = T)
+df_CDF <- data.frame(x = seq(0, max(df$average_ESBL_Ec), length.out = 1000)) # Combine CDF data for all wwtps into a single data frame
+for (wwtp in unique(df$wwtp)) {
+  df_CDF[, wwtp] <- CDF_list[[wwtp]](df_CDF$x)
+}
 
-median(df_zur$average_loads_ESBL_Ec, na.rm = T)
+df_CDF_long <- tidyr::gather(df_CDF, key = "wwtp", value = "CDF", -x) # Convert data from wide to long format for ggplot2
 
-median(df_gen$average_loads_ESBL_Ec, na.rm = T)
+# Generate plot with CDF curves 
+custom_palette <- c("#fc8d62ff", "#8da0cbff", "#e78ac3ff", "#ffd92fff", "#a6d854ff", "#66c2a5ff") #line colours CDF plots
 
+cdfper=ggplot(df_CDF_long, aes(x = x, y = CDF, color = wwtp)) +
+  geom_line(linewidth=1.2) +
+  theme_minimal()+
+  theme(legend.position= c(0.99, 0.9),legend.justification = c(1, 1))+
+  xlab(expression(paste("Percentage of ESBL- ", italic("E. coli"), " (%)"))) +
+  ylab("Cumulative Distribution Function") +
+  theme(axis.title.y = element_text(size=8.5), axis.title.x = element_text(size=9), axis.text.y = element_text(colour = "black"), axis.text.x = element_text(colour = "black"))+
+  scale_color_manual(values = custom_palette)+
+  labs(color = "WWTP")
+
+####Loads ESBL-E. coli-----------
+#Order WWTPs in descending median ESBL-E. coli loads
 m_t = c("ARA Altenrhein","ARA Werdhölzli Zürich","STEP d'Aïre Genève", "ARA Sensetal Laupen", "ARA Chur", "IDA CDA Lugano") #ordering WWTPs from highest to lowest ESBL-Ec loads
 
+#Generate boxplot
 lrepl=ggplot(data=df) +
   geom_boxplot(aes(y=log10(average_loads_ESBL_Ec), x=wwtp), outlier.colour = NA, outlier.shape = NA) +
   geom_point(aes(y=log10(average_loads_ESBL_Ec), x=wwtp,
@@ -234,20 +268,37 @@ lrepl=ggplot(data=df) +
                                                    "9" = expression(10^{9})))+
   xlab("")
 
-#loads_tot_Ec
-#calculate median in each WWTP 
-median(df_sen$average_loads_tot_Ec, na.rm = T)
+# calculate CDF
+df = filter(df, !is.na(average_loads_ESBL_Ec)) #remove na.values from dataset
 
-median(df_lug$average_loads_tot_Ec, na.rm = T)
+CDF_list <- list() #Create a list to store CDF data for each wwtp
 
-median(df_alt$average_loads_tot_Ec, na.rm = T)
+for (wwtp in unique(df$wwtp)) {
+  CDF_list[[wwtp]] <- ecdf(log10(df$average_loads_ESBL_Ec)[df$wwtp == wwtp])
+} # Iterate through each wwtp and calculate its CDF using ecdf()
 
-median(df_chu$average_loads_tot_Ec, na.rm = T)
+df_CDF <- data.frame(x = seq(6.5, max(log10(df$average_loads_ESBL_Ec)), length.out = 1000)) # Combine CDF data for all wwtps into a single data frame
+for (wwtp in unique(df$wwtp)) {
+  df_CDF[, wwtp] <- CDF_list[[wwtp]](df_CDF$x)
+}
 
-median(df_zur$average_loads_tot_Ec, na.rm = T)
+df_CDF_long <- tidyr::gather(df_CDF, key = "wwtp", value = "CDF", -x) # Convert data from wide to long format for ggplot2
 
-median(df_gen$average_loads_tot_Ec, na.rm = T)
+# Generate plot with CDF curves
+cdfesbl=ggplot(df_CDF_long, aes(x = x, y = CDF, color = wwtp)) +
+  geom_line(linewidth=1.2) +
+  theme_minimal()+
+  theme(legend.position= c(0.3, 0.9),legend.justification = c(1, 1))+
+  xlab(expression(paste("loads ESBL- ", italic("E. coli"), " log10(CFUs/(person-day))"))) +
+  ylab("Cumulative Distribution Function") +
+  scale_color_manual(values = custom_palette)+
+  labs(color = "WWTP")+
+  scale_x_continuous(breaks = c(7, 8, 9), labels=c("7" = expression(10^{7}), "8" =expression(10^{8}),
+                                                   "9" = expression(10^{9}))) +
+  theme(axis.title.y = element_text(size=8.5), axis.title.x = element_text(size=9), axis.text.y = element_text(colour = "black"), axis.text.x = element_text(colour = "black"))
 
+####Loads total E. coli-----------
+#Order WWTPs in descending median total E. coli loads
 m_l = c("ARA Altenrhein", "ARA Chur","ARA Sensetal Laupen","ARA Werdhölzli Zürich", "STEP d'Aïre Genève", "IDA CDA Lugano") #ordering WWTPs from highest to lowest total Ec loads
 
 ltopl=ggplot(data=df) +
@@ -264,70 +315,7 @@ ltopl=ggplot(data=df) +
                                                      "11" = expression(10^{11})))+
   xlab("")
 
-ggarrange(perpl, ggarrange(ltopl, lrepl, ncol = 1, labels = c("B", "C")), 
-          labels = c("A",""), ncol = 2)
-
-### calculate CDF -------
-#Plot observations of ESBL-Ec to compare between wwtps 
-custom_palette <- c("#fc8d62ff", "#8da0cbff", "#e78ac3ff", "#ffd92fff", "#a6d854ff", "#66c2a5ff") #line colours for plots
-
-#percentage_ESBL_Ec
-df = filter(df, !is.na(average_ESBL_Ec)) #remove na.values from dataset
-
-CDF_list <- list() #Create a list to store CDF data for each wwtp
-
-for (wwtp in unique(df$wwtp)) { 
-  CDF_list[[wwtp]] <- ecdf(df$average_ESBL_Ec[df$wwtp == wwtp])
-} # Iterate through each wwtp and calculate its CDF using ecdf()
-
-df_CDF <- data.frame(x = seq(0, max(df$average_ESBL_Ec), length.out = 1000)) # Combine CDF data for all wwtps into a single data frame
-for (wwtp in unique(df$wwtp)) {
-  df_CDF[, wwtp] <- CDF_list[[wwtp]](df_CDF$x)
-}
-
-df_CDF_long <- tidyr::gather(df_CDF, key = "wwtp", value = "CDF", -x) # Convert data from wide to long format for ggplot2
-
-# Plot CDF curves for each wwtp using ggplot2
-cdfper=ggplot(df_CDF_long, aes(x = x, y = CDF, color = wwtp)) +
-  geom_line(linewidth=1.2) +
-  theme_minimal()+
-  theme(legend.position= c(0.99, 0.9),legend.justification = c(1, 1))+
-  xlab(expression(paste("Percentage of ESBL- ", italic("E. coli"), " (%)"))) +
-  ylab("Cumulative Distribution Function") +
-  theme(axis.title.y = element_text(size=8.5), axis.title.x = element_text(size=9), axis.text.y = element_text(colour = "black"), axis.text.x = element_text(colour = "black"))+
-  scale_color_manual(values = custom_palette)+
-  labs(color = "WWTP")
-
-#loads_ESBL_Ec
-df = filter(df, !is.na(average_loads_ESBL_Ec)) #remove na.values from dataset
-
-CDF_list <- list() #Create a list to store CDF data for each wwtp
-
-for (wwtp in unique(df$wwtp)) {
-  CDF_list[[wwtp]] <- ecdf(log10(df$average_loads_ESBL_Ec)[df$wwtp == wwtp])
-} # Iterate through each wwtp and calculate its CDF using ecdf()
-
-df_CDF <- data.frame(x = seq(6.5, max(log10(df$average_loads_ESBL_Ec)), length.out = 1000)) # Combine CDF data for all wwtps into a single data frame
-for (wwtp in unique(df$wwtp)) {
-  df_CDF[, wwtp] <- CDF_list[[wwtp]](df_CDF$x)
-}
-
-df_CDF_long <- tidyr::gather(df_CDF, key = "wwtp", value = "CDF", -x) # Convert data from wide to long format for ggplot2
-
-# Plot CDF curves for each wwtp using ggplot2
-cdfesbl=ggplot(df_CDF_long, aes(x = x, y = CDF, color = wwtp)) +
-  geom_line(linewidth=1.2) +
-  theme_minimal()+
-  theme(legend.position= c(0.3, 0.9),legend.justification = c(1, 1))+
-  xlab(expression(paste("loads ESBL- ", italic("E. coli"), " log10(CFUs/(person-day))"))) +
-  ylab("Cumulative Distribution Function") +
-  scale_color_manual(values = custom_palette)+
-  labs(color = "WWTP")+
-  scale_x_continuous(breaks = c(7, 8, 9), labels=c("7" = expression(10^{7}), "8" =expression(10^{8}),
-                                                                       "9" = expression(10^{9}))) +
-  theme(axis.title.y = element_text(size=8.5), axis.title.x = element_text(size=9), axis.text.y = element_text(colour = "black"), axis.text.x = element_text(colour = "black"))
-
-#loads_total_Ec
+# calculate CDF
 df = filter(df, !is.na(log10(average_loads_tot_Ec))) #remove na.values from dataset
 
 CDF_list <- list()# Create a list to store CDF data for each wwtp
@@ -343,7 +331,7 @@ for (wwtp in unique(df$wwtp)) {
 
 df_CDF_long <- tidyr::gather(df_CDF, key = "wwtp", value = "CDF", -x) # Convert data from wide to long format for ggplot2
 
-# Plot CDF curves for each wwtp using ggplot2
+# Generate plot with CDF curves
 cdftot=ggplot(df_CDF_long, aes(x = x, y = CDF, color = wwtp)) +
   geom_line(linewidth=1.2) +
   theme_minimal()+
@@ -356,12 +344,60 @@ cdftot=ggplot(df_CDF_long, aes(x = x, y = CDF, color = wwtp)) +
                                                      "11" = expression(10^{11})))+
   theme(axis.title.y = element_text(size=8.5), axis.title.x = element_text(size=9), axis.text.y = element_text(colour = "black"), axis.text.x = element_text(colour = "black"))
 
-#####Plot CDF and Boxplots of WWTP differences----------------
+#Arrange all plots together (boxplots + CDF curves)
 ggarrange(perpl, cdfper, ltopl, cdftot, lrepl, cdfesbl,nrow=3, ncol=2, labels=c("A", "B", "C", "D", "E", "F"), common.legend = TRUE)
+
+###Statistical tests--------------------------------
+####Percentage ESBL-E. coli-----------
+  #shapiro.test(df_filtered$average_ESBL_Ec)
+  #Shapiro-Wilk normality test
+  #W = 0.92056, p-value = 1.566e-11 
+      #shapiro test indicates that the "average_ESBL_Ec" data are not normally distributed
+
+# Perform the Kruskal-Wallis test
+df_filtered$wwtp=as.factor(df_filtered$wwtp)
+kruskal_test(average_ESBL_Ec ~ wwtp, data = df_filtered)
+
+# perform pairwise comparisons using post-hoc test Dunn's test with "Bonferroni" correction to identify which groups differ significantly from each other.
+dunn_test_result_perc_ESBLEc <- dunn.test(df_filtered$average_ESBL_Ec, df_filtered$wwtp, 
+                              method = "bonferroni")
+dunn_test_result_perc_ESBLEc
+
+####Loads ESBL-E. coli-----------
+  #shapiro.test(df_filtered_t$average_loads_tot_Ec)
+  #Shapiro-Wilk normality test
+  #data:  df_filtered_t$average_loads_tot_Ec
+  #W = 0.95418, p-value = 4.252e-08
+    #shapiro test indicates that the "average_loads_tot_Ec" data are not normally distributed
+
+# Perform the Kruskal-Wallis test
+df_filtered_t$wwtp=as.factor(df_filtered_t$wwtp)
+kruskal_test(average_loads_tot_Ec ~ wwtp, data = df_filtered_t)
+
+# perform pairwise comparisons using post-hoc test Dunn's test with "Bonferroni" correction to identify which groups differ significantly from each other.
+dunn_test_result_loads_totEc <- dunn.test(df_filtered_t$average_loads_tot_Ec, df_filtered_t$wwtp, 
+                              method = "bonferroni")
+dunn_test_result_loads_totEc
+
+####Loads ESBL E. coli-----------
+    #shapiro.test(df_filtered_r$average_loads_ESBL_Ec)
+    #Shapiro-Wilk normality test
+    #data:  df_filtered_r$average_loads_ESBL_Ec
+    #W = 0.95078, p-value = 1.584e-08
+      #shapiro test indicates that the "average_loads_ESBL_Ec" data are not normally distributed
+
+# Perform the Kruskal-Wallis test
+df_filtered_r$wwtp=as.factor(df_filtered_r$wwtp)
+kruskal_test(average_loads_ESBL_Ec ~ wwtp, data = df_filtered_r)
+
+# perform pairwise comparisons using post-hoc test Dunn's test with "Bonferroni" correction to identify which groups differ significantly from each other.
+dunn_test_result_loads_ESBLEc <- dunn.test(df_filtered_r$average_loads_ESBL_Ec, df_filtered_r$wwtp, 
+                              method = "bonferroni")
+dunn_test_result_loads_ESBLEc
 
 ##Differences between months-------------------------------
 ###Plots----------------------
-#percentage_ESBL_Ec
+####Percentage ESBL-E.coli----------------
 per1=ggplot(data=df) +
   geom_boxplot(aes(y=(average_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
   geom_point(aes(y=(average_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates"))) +
@@ -373,7 +409,7 @@ per1=ggplot(data=df) +
   scale_y_continuous(breaks = c(1, 2, 3, 4, 5))+
   xlab("")
 
-#loads_ESBL_Ec
+####Loads ESBL-E.coli----------------
 lre1=ggplot(data=df) +
   geom_boxplot(aes(y=log10(average_loads_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
   geom_point(aes(y=log10(average_loads_ESBL_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(esblEc_loads_a) | is.na(esblEc_loads_b), "Unique replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), size=1.5) +
@@ -386,7 +422,7 @@ lre1=ggplot(data=df) +
                                                    "9" = expression(10^{9})))+
   xlab("")
 
-#loads_tot_Ec
+####Loads total E.coli----------------
 lto1=ggplot(data=df) +
   geom_boxplot(aes(y=log10(average_loads_tot_Ec), x=reorder(format(as.Date(date), "%b %Y"), date)), outlier.colour = NA, outlier.shape = NA) +
   geom_point(aes(y=log10(average_loads_tot_Ec), x=reorder(format(as.Date(date), "%b %Y"), date), color = ifelse(is.na(totalEc_loads_a) | is.na(totalEc_loads_b), "Unique replicate", "Averaged on two replicates"), shape = ifelse(is.na(esblEc_percentage_a) | is.na(esblEc_percentage_b), "Single replicate", "Averaged on two replicates")), size=1.5) +
@@ -401,7 +437,103 @@ lto1=ggplot(data=df) +
 
 ggarrange(per1, lto1, lre1, ncol = 3, labels = c("A","B", "C"), common.legend = TRUE) #aggregate the three plots together
 
-### Environmental variables-------
+###Statistical tests--------------------
+####Percentage ESBL-E.coli----------------
+#Perform Kruskal-wallis with Dunn's test and Bonferroni adjustmen as a loop on all the WWTP df to check for significant differences on a monthly scale
+df_list <- list(df_per_alt, df_per_chu, df_per_gen, df_per_sen, df_per_lug, df_per_zur) #Create a list of data frames for each wwtp
+
+wwtp_names <- c("ARA Altenrhein", "ARA Chur", "STEP d'Aïre Genève", "ARA Sensetal Laupen", 
+                "IDA CDA Lugano", "ARA Werdhölzli Zürich") #Define the names of the wwtps
+
+for (i in seq_along(df_list)) {
+  # Perform the Kruskal-Wallis test
+  kruskal_test <- kruskal.test(average_ESBL_Ec ~ month_year, data = df_list[[i]])
+  
+  # Perform the Dunn's test
+  dunn_test <- dunn.test(x = df_list[[i]]$average_ESBL_Ec, g = df_list[[i]]$month_year, 
+                         method = "bonferroni")
+  
+  # Print the results for each wwtp
+  cat("\n====================\n")
+  cat(paste0("Results for ", wwtp_names[i], "\n"))
+  cat("====================\n\n")
+  
+  # Print the Kruskal-Wallis test results
+  cat("Kruskal-Wallis Test:\n")
+  print(kruskal_test)
+  cat("\n")
+  
+  # Print the Dunn's test results
+  cat("Dunn's Test:\n")
+  print(dunn_test$comparison)
+  cat("\n")
+}
+
+####Loads total E.coli----------------
+#Perform Kruskal-wallis with Dunn's test and Bonferroni adjustmen as a loop on all the WWTP df to check for significant differences on a monthly scale
+df_list <- list(df_tot_alt, df_tot_chu, df_tot_gen, df_tot_sen, df_tot_lug, df_tot_zur)#Create a list of data frames for each wwtp
+
+wwtp_names <- c("ARA Altenrhein", "ARA Chur", "STEP d'Aïre Genève", "ARA Sensetal Laupen", 
+                "IDA CDA Lugano", "ARA Werdhölzli Zürich")#Define the names of the wwtps
+
+# Perform the Kruskal-Wallis test and Dunn's test for each wwtp
+for (i in seq_along(df_list)) {
+  # Perform the Kruskal-Wallis test
+  kruskal_test <- kruskal.test(average_loads_tot_Ec ~ month_year, data = df_list[[i]])
+  
+  # Perform the Dunn's test
+  dunn_test <- dunn.test(x = df_list[[i]]$average_loads_tot_Ec, g = df_list[[i]]$month_year, 
+                         method = "bonferroni")
+  
+  # Print the results for each wwtp
+  cat("\n====================\n")
+  cat(paste0("Results for ", wwtp_names[i], "\n"))
+  cat("====================\n\n")
+  
+  # Print the Kruskal-Wallis test results
+  cat("Kruskal-Wallis Test:\n")
+  print(kruskal_test)
+  cat("\n")
+  
+  # Print the Dunn's test results
+  cat("Dunn's Test:\n")
+  print(dunn_test$comparison)
+  cat("\n")
+}
+
+####Loads ESBL-E.coli----------------
+#Perform Kruskal-wallis with Dunn's test and Bonferroni adjustmen as a loop on all the WWTP df to check for significant differences on a monthly scale
+df_list <- list(df_ESBL_alt, df_ESBL_chu, df_ESBL_gen, df_ESBL_sen, df_ESBL_lug, df_ESBL_zur)#Create a list of data frames for each wwtp
+
+wwtp_names <- c("ARA Altenrhein", "ARA Chur", "STEP d'Aïre Genève", "ARA Sensetal Laupen", 
+                "IDA CDA Lugano", "ARA Werdhölzli Zürich")#Define the names of the wwtps
+
+# Perform the Kruskal-Wallis test and Dunn's test for each wwtp
+for (i in seq_along(df_list)) {
+  # Perform the Kruskal-Wallis test
+  kruskal_test <- kruskal.test(average_loads_ESBL_Ec ~ month_year, data = df_list[[i]])
+  
+  # Perform the Dunn's test
+  dunn_test <- dunn.test(x = df_list[[i]]$average_loads_ESBL_Ec, g = df_list[[i]]$month_year, 
+                         method = "bonferroni")
+  
+  # Print the results for each wwtp
+  cat("\n====================\n")
+  cat(paste0("Results for ", wwtp_names[i], "\n"))
+  cat("====================\n\n")
+  
+  # Print the Kruskal-Wallis test results
+  cat("Kruskal-Wallis Test:\n")
+  print(kruskal_test)
+  cat("\n")
+  
+  # Print the Dunn's test results
+  cat("Dunn's Test:\n")
+  print(dunn_test$comparison)
+  cat("\n")
+}
+
+##Environmental variables-------
 df$temperature=as.numeric(df$temperature)
 df$precipitations_24h_sum_mm=as.numeric(df$precipitations_24h_sum_mm)
 df$precipitations_96h_sum_mm=as.numeric(df$precipitations_96h_sum_mm)
@@ -546,7 +678,7 @@ heatmap_plot <- ggplot(heatmap_data_1, aes(x = Variable, y = Location)) +
   ggtitle(expression(paste("Percentage of ESBL- ", italic("E. coli"), " (%)")))+
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10), axis.text.y=element_text(size = 10))
 
-####ESBL-Ec loads-------------------------
+####Loads ESBL-E. coli--------------
 #####Temperature--------------------------------
 correlation_results <- list()
 alpha <- 0.05  # Set your desired significance level (e.g., 0.05)
@@ -684,7 +816,7 @@ heatmap_plot_loads_ESBL <- ggplot(heatmap_data_2, aes(x = Variable, y = Location
   ggtitle(expression(paste("Loads of ESBL- ", italic("E. coli"), " (CFUs/person-day)")))+
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10), axis.text.y=element_text(size = 10))
 
-####Total Ec loads------------------------
+####Loads total E. coli------------------------
 #####Temperature-----------------------
 correlation_results <- list()
 alpha <- 0.05  # Set your desired significance level (e.g., 0.05)
@@ -824,361 +956,6 @@ heatmap_plot_loads_tot <- ggplot(heatmap_data_3, aes(x = Variable, y = Location)
 
 ggarrange(heatmap_plot,heatmap_plot_loads_ESBL, heatmap_plot_loads_tot, ncol=3, labels = c("A", "B", "C"), common.legend = TRUE)
 
-###Statistical tests to check for difference in ESBL-monitoring of 1year----------------
-df_filtered = filter(df, !is.na(average_ESBL_Ec)) #df_filtered contains the 300 observations for which ESBL-Ec percentage could be calculated
-#shapiro test indicates that the "average_ESBL_Ec" data are not normally distributed
-          #shapiro.test(df_filtered$average_ESBL_Ec)
-
-          #Shapiro-Wilk normality test
-
-          #W = 0.92056, p-value = 1.566e-11
-
-#non-parametric test Kruskal-Wallis, 
-  #which is used to compare the medians of two or more independent groups. 
-  #The test does not assume normal distribution and is therefore suitable for 
-  #non-normally distributed data.
-
-# Load the necessary library
-library(coin)
-
-# Perform the Kruskal-Wallis test
-df_filtered$wwtp=as.factor(df_filtered$wwtp)
-kruskal_test(average_ESBL_Ec ~ wwtp, data = df_filtered)
-
-  #Asymptotic Kruskal-Wallis Test
-  #data:  average_ESBL_Ec by
-  #wwtp (ARA Altenrhein, ARA Chur, ARA Sensetal Laupen, ARA Werdhölzli Z?rich, IDA CDA Lugano, STEP d'Aïre Genève)
-  #chi-squared = 48.327, df = 5, p-value = 3.045e-09
-
-# perform pairwise comparisons using post-hoc test Dunn's test with "Bonferroni" correction
-  #to identify which groups differ significantly from each other.
-library(dunn.test)
-dunn_test_result <- dunn.test(df_filtered$average_ESBL_Ec, df_filtered$wwtp, 
-                              method = "bonferroni")
-dunn_test_result
-
-#Check if there are different between months within each WWTP
-df_per_alt = df_filtered %>% filter(wwtp == "ARA Altenrhein")
-df_per_chu = df_filtered %>% filter(wwtp == "ARA Chur")
-df_per_gen = df_filtered %>% filter(wwtp == "STEP d'Aïre Genève")
-df_per_zur = df_filtered %>% filter(wwtp == "ARA Werdhölzli Zürich")
-df_per_lug = df_filtered %>% filter(wwtp == "IDA CDA Lugano")
-df_per_sen = df_filtered %>% filter(wwtp == "ARA Sensetal Laupen")
-
-#calculate mean and sd of ESBL percentage in each wwtp
-# Create a list of your data frames
-df_list <- list(df_per_alt, df_per_chu, df_per_gen, df_per_zur, df_per_lug, df_per_sen)
-
-# Create empty vectors to store the means and standard deviations
-means <- c()
-sds <- c()
-
-# Loop through each data frame in the list
-for (i in seq_along(df_list)) {
-  # Calculate the mean and standard deviation for the variable of interest
-  var_mean <- mean(df_list[[i]]$average_ESBL_Ec)
-  var_sd <- sd(df_list[[i]]$average_ESBL_Ec)
-  
-  # Append the mean and standard deviation to their respective vectors
-  means <- c(means, var_mean)
-  sds <- c(sds, var_sd)
-}
-
-# Print the means and standard deviations for each data frame
-cat("Means:", means, "\n")
-cat("Standard deviations:", sds)
-
-#check for normality in the ESBL-Ec percentage in each WWTP
-shapiro.test(df_per_alt$average_ESBL_Ec) #Altenrhein
-    #W = 0.9435, p-value = 0.01858
-shapiro.test(df_per_chu$average_ESBL_Ec) #Chur
-    #W = 0.79095, p-value = 4.477e-07
-shapiro.test(df_per_gen$average_ESBL_Ec) #Geneva
-    #W = 0.96207, p-value = 0.1022
-shapiro.test(df_per_zur$average_ESBL_Ec) #Zurich
-    #W = 0.84651, p-value = 2.094e-05
-shapiro.test(df_per_lug$average_ESBL_Ec) #Lugano
-    #W = 0.94392, p-value = 0.0193
-shapiro.test(df_per_sen$average_ESBL_Ec) #Sensetal-Laupen
-    #W = 0.92702, p-value = 0.003833
-
-    #For all the WWTPs except one the normality assumption is not met. 
-    #I will use a Kruskal-Wallis test with a Bonferroni adjusted Dunn's test to check for 
-    #differences between months. Even if in geneva data are normally distributed, it is
-    #better to use the same test as in the others WWTP to be able to compare results. 
-
-#Perform Kruskal-wallis with Dunn's test and Bonferroni adjustmen as a loop on all the WWTP df to check for significant differences on a monthly scale
-library(dunn.test)
-df_list <- list(df_per_alt, df_per_chu, df_per_gen, df_per_sen, df_per_lug, df_per_zur)#Create a list of data frames for each wwtp
-
-wwtp_names <- c("ARA Altenrhein", "ARA Chur", "STEP d'Aïre Genève", "ARA Sensetal Laupen", 
-                 "IDA CDA Lugano", "ARA Werdhölzli Zürich")#Define the names of the wwtps
-
-# Perform the Kruskal-Wallis test and Dunn's test for each wwtp
-library(writexl)
-
-# Create an empty list to store the results
-result_list <- list()
-
-for (i in seq_along(df_list)) {
-  # Perform the Kruskal-Wallis test
-  kruskal_test <- kruskal.test(average_ESBL_Ec ~ month_year, data = df_list[[i]])
-  
-  # Perform the Dunn's test
-  dunn_test <- dunn.test(x = df_list[[i]]$average_ESBL_Ec, g = df_list[[i]]$month_year, 
-                         method = "bonferroni")
-  
-  # Create a data frame to store the results for each wwtp
-  result_df <- data.frame(wwtp = wwtp_names[i],
-                          Kruskal_Wallis_Test = capture.output(kruskal_test),
-                          Dunn_Test = capture.output(dunn_test$comparison))
-  
-  # Append the result to the list
-  result_list[[i]] <- result_df
-}
-
-# Save the results as an Excel file
-write_xlsx(result_list, "results.xlsx")
-
-# Confirmation message
-cat("Results saved to results.xlsx\n")
-
-
-for (i in seq_along(df_list)) {
-  # Perform the Kruskal-Wallis test
-  kruskal_test <- kruskal.test(average_ESBL_Ec ~ month_year, data = df_list[[i]])
-  
-  # Perform the Dunn's test
-  dunn_test <- dunn.test(x = df_list[[i]]$average_ESBL_Ec, g = df_list[[i]]$month_year, 
-                         method = "bonferroni")
-  
-  # Print the results for each wwtp
-  cat("\n====================\n")
-  cat(paste0("Results for ", wwtp_names[i], "\n"))
-  cat("====================\n\n")
-  
-  # Print the Kruskal-Wallis test results
-  cat("Kruskal-Wallis Test:\n")
-  print(kruskal_test)
-  cat("\n")
-  
-  # Print the Dunn's test results
-  cat("Dunn's Test:\n")
-  print(dunn_test$comparison)
-  cat("\n")
-}
-# Close the file connection
-close(file_conn)
-
-# Confirmation message
-cat("Results saved to", file_path, "\n")
-
-#df_filtered_t contains the 301 observations for which loads of total-Ec could be calculated
-df_filtered_t = filter(df, !is.na(average_loads_tot_Ec))
-df_filtered_t$average_loads_tot_Ec= log(df_filtered_t$average_loads_tot_Ec)#log transformation of loads data
-
-#shapiro test indicates that the "average_loads_tot_Ec" data are not normally distributed
-#shapiro.test(df_filtered_t$average_loads_tot_Ec)
-      #Shapiro-Wilk normality test
-
-      #data:  df_filtered_t$average_loads_tot_Ec
-      #W = 0.95418, p-value = 4.252e-08
-
-#non-parametric test Kruskal-Wallis, 
-#which is used to compare the medians of two or more independent groups. 
-#The test does not assume normal distribution and is therefore suitable for 
-#non-normally distributed data.
-
-# Load the necessary library
-library(coin)
-
-# Perform the Kruskal-Wallis test
-df_filtered_t$wwtp=as.factor(df_filtered_t$wwtp)
-kruskal_test(average_loads_tot_Ec ~ wwtp, data = df_filtered_t)
-
-#Asymptotic Kruskal-Wallis Test
-#data:  average_loads_tot_Ec by
-#wwtp (ARA Altenrhein, ARA Chur, ARA Sensetal Laupen, ARA Werdhölzli Z?rich, IDA CDA Lugano, STEP d'Aïre Genève)
-#chi-squared = 40.537, df = 5, p-value = 1.163e-07
-
-# perform pairwise comparisons using post-hoc test Dunn's test with "Bonferroni" correction
-#to identify which groups differ significantly from each other.
-library(dunn.test)
-dunn_test_result <- dunn.test(df_filtered_t$average_loads_tot_Ec, df_filtered_t$wwtp, 
-                              method = "bonferroni")
-dunn_test_result
-
-#filter df_filtered_t based on wwtp to find highest and lowest values in each WWTP
-df_tot_alt = df_filtered_t %>% filter(wwtp == "ARA Altenrhein")
-df_tot_chu = df_filtered_t %>% filter(wwtp == "ARA Chur")
-df_tot_gen = df_filtered_t %>% filter(wwtp == "STEP d'Aïre Genève")
-df_tot_zur = df_filtered_t %>% filter(wwtp == "ARA Werdhölzli Z?rich")
-df_tot_lug = df_filtered_t %>% filter(wwtp == "IDA CDA Lugano")
-df_tot_sen = df_filtered_t %>% filter(wwtp == "ARA Sensetal Laupen")
-
-#calculate mean and sd of tot-Ec loads in each wwtp
-# Create a list of your data frames
-df_list <- list(df_tot_alt, df_tot_chu, df_tot_gen, df_tot_zur, df_tot_lug, df_tot_sen)
-
-# Create empty vectors to store the means and standard deviations
-means <- c()
-sds <- c()
-
-# Loop through each data frame in the list
-for (i in seq_along(df_list)) {
-  # Calculate the mean and standard deviation for the variable of interest
-  var_mean <- mean(df_list[[i]]$average_loads_tot_Ec)
-  var_sd <- sd(df_list[[i]]$average_loads_tot_Ec)
-  
-  # Append the mean and standard deviation to their respective vectors
-  means <- c(means, var_mean)
-  sds <- c(sds, var_sd)
-}
-
-# Print the means and standard deviations for each data frame
-cat("Means:", means, "\n")
-cat("Standard deviations:", sds)
-
-#Perform Kruskal-wallis with Dunn's test and Bonferroni adjustmen as a loop on all the WWTP df to check for significant differences on a monthly scale
-library(dunn.test)
-df_list <- list(df_tot_alt, df_tot_chu, df_tot_gen, df_tot_sen, df_tot_lug, df_tot_zur)#Create a list of data frames for each wwtp
-
-wwtp_names <- c("ARA Altenrhein", "ARA Chur", "STEP d'Aïre Genève", "ARA Sensetal Laupen", 
-                 "IDA CDA Lugano", "ARA Werdhölzli Zürich")#Define the names of the wwtps
-
-# Perform the Kruskal-Wallis test and Dunn's test for each wwtp
-for (i in seq_along(df_list)) {
-  # Perform the Kruskal-Wallis test
-  kruskal_test <- kruskal.test(average_loads_tot_Ec ~ month_year, data = df_list[[i]])
-  
-  # Perform the Dunn's test
-  dunn_test <- dunn.test(x = df_list[[i]]$average_loads_tot_Ec, g = df_list[[i]]$month_year, 
-                         method = "bonferroni")
-  
-  # Print the results for each wwtp
-  cat("\n====================\n")
-  cat(paste0("Results for ", wwtp_names[i], "\n"))
-  cat("====================\n\n")
-  
-  # Print the Kruskal-Wallis test results
-  cat("Kruskal-Wallis Test:\n")
-  print(kruskal_test)
-  cat("\n")
-  
-  # Print the Dunn's test results
-  cat("Dunn's Test:\n")
-  print(dunn_test$comparison)
-  cat("\n")
-}
-
-#df_filtered_r contains the 302 observations for which loads of ESBL-Ec could be calculated
-df_filtered_r = filter(df, !is.na(average_loads_ESBL_Ec))
-df_filtered_r$average_loads_ESBL_Ec= log(df_filtered_r$average_loads_ESBL_Ec)#log transformation of loads data
-
-#shapiro test indicates that the "average_loads_ESBL_Ec" data are not normally distributed
-#shapiro.test(df_filtered_r$average_loads_ESBL_Ec)
-#Shapiro-Wilk normality test
-
-#data:  df_filtered_r$average_loads_ESBL_Ec
-#W = 0.95078, p-value = 1.584e-08
-
-#non-parametric test Kruskal-Wallis, 
-#which is used to compare the medians of two or more independent groups. 
-#The test does not assume normal distribution and is therefore suitable for 
-#non-normally distributed data.
-
-# Load the necessary library
-library(coin)
-
-# Perform the Kruskal-Wallis test
-df_filtered_r$wwtp=as.factor(df_filtered_r$wwtp)
-kruskal_test(average_loads_ESBL_Ec ~ wwtp, data = df_filtered_r)
-
-#Asymptotic Kruskal-Wallis Test
-#data:  average_loads_ESBL_Ec by
-#wwtp (ARA Altenrhein, ARA Chur, ARA Sensetal Laupen, ARA Werdhölzli Z?rich, IDA CDA Lugano, STEP d'Aïre Genève)
-#chi-squared = 36.239, df = 5, p-value = 8.507e-07
-
-
-# perform pairwise comparisons using post-hoc test Dunn's test with "Bonferroni" correction
-#to identify which groups differ significantly from each other.
-library(dunn.test)
-dunn_test_result <- dunn.test(df_filtered_r$average_loads_ESBL_Ec, df_filtered_r$wwtp, 
-                              method = "bonferroni")
-dunn_test_result
-
-#filter df_filtered_t based on wwtp to find highest and lowest values in each WWTP
-df_ESBL_alt = df_filtered_r %>% filter(wwtp == "ARA Altenrhein")
-df_ESBL_chu = df_filtered_r %>% filter(wwtp == "ARA Chur")
-df_ESBL_gen = df_filtered_r %>% filter(wwtp == "STEP d'Aïre Genève")
-df_ESBL_zur = df_filtered_r %>% filter(wwtp == "ARA Werdhölzli Zürich")
-df_ESBL_lug = df_filtered_r %>% filter(wwtp == "IDA CDA Lugano")
-df_ESBL_sen = df_filtered_r %>% filter(wwtp == "ARA Sensetal Laupen")
-
-#calculate mean and sd of tot-Ec loads in each wwtp
-# Create a list of your data frames
-df_list_r <- list(df_ESBL_alt, df_ESBL_chu, df_ESBL_gen, df_ESBL_zur, df_ESBL_lug, df_ESBL_sen)
-
-# Create empty vectors to store the means and standard deviations
-means <- c()
-sds <- c()
-
-# Loop through each data frame in the list
-for (i in seq_along(df_list_r)) {
-  # Calculate the mean and standard deviation for the variable of interest
-  var_mean <- mean(df_list[[i]]$average_loads_ESBL_Ec)
-  var_sd <- sd(df_list[[i]]$average_loads_ESBL_Ec)
-  
-  # Append the mean and standard deviation to their respective vectors
-  means <- c(means, var_mean)
-  sds <- c(sds, var_sd)
-}
-
-# Print the means and standard deviations for each data frame
-cat("Means:", means, "\n")
-cat("Standard deviations:", sds)
-
-#Calculate min and max values of ESBL-Ec loads in each WWTP
-min_values <- sapply(df_list_r, function(df) min(df$average_loads_ESBL_Ec))
-
-# Apply the max() function to the 'x' variable in each data frame
-max_values <- sapply(df_list_r, function(df) max(df$average_loads_ESBL_Ec))
-
-# Print the results
-min_values
-max_values
-
-#Perform Kruskal-wallis with Dunn's test and Bonferroni adjustmen as a loop on all the WWTP df to check for significant differences on a monthly scale
-library(dunn.test)
-df_list <- list(df_ESBL_alt, df_ESBL_chu, df_ESBL_gen, df_ESBL_sen, df_ESBL_lug, df_ESBL_zur)#Create a list of data frames for each wwtp
-
-wwtp_names <- c("ARA Altenrhein", "ARA Chur", "STEP d'Aïre Genève", "ARA Sensetal Laupen", 
-                 "IDA CDA Lugano", "ARA Werdhölzli Zürich")#Define the names of the wwtps
-
-# Perform the Kruskal-Wallis test and Dunn's test for each wwtp
-for (i in seq_along(df_list)) {
-  # Perform the Kruskal-Wallis test
-  kruskal_test <- kruskal.test(average_loads_ESBL_Ec ~ month_year, data = df_list[[i]])
-  
-  # Perform the Dunn's test
-  dunn_test <- dunn.test(x = df_list[[i]]$average_loads_ESBL_Ec, g = df_list[[i]]$month_year, 
-                         method = "bonferroni")
-  
-  # Print the results for each wwtp
-  cat("\n====================\n")
-  cat(paste0("Results for ", wwtp_names[i], "\n"))
-  cat("====================\n\n")
-  
-  # Print the Kruskal-Wallis test results
-  cat("Kruskal-Wallis Test:\n")
-  print(kruskal_test)
-  cat("\n")
-  
-  # Print the Dunn's test results
-  cat("Dunn's Test:\n")
-  print(dunn_test$comparison)
-  cat("\n")
-}
 
 ###Carriage estimation------
 ####Whole Switzerland, with population adjusted ESBL-Ec percentage in WW-----
@@ -1190,10 +967,6 @@ for (i in seq_along(df_list)) {
   # ARA Lug = 1.970193   124'000
   # ARA Sen = 1.373625   62'000
                                   #tot population = 1'230'000
-
-#Estimate mean ESBL-Ec adjusted by population in Switzerland
-mean = (1.722433*64000+1.397264*55000+2.019172*454000+1.913655*471000+1.970193*124000+1.373625*62000)/(64000+55000+454000+471000+124000+62000)
-  #population weighted mean = 1.89804
 
 #S.E of population weighted mean
 #(SEMw)^2 = [n/(n-1)(∑Pi)^2]*[∑(Pi*Xi - P*Xw)^2-2*Xw*∑(Pi-P)(Pi*Xi - P*Xw)+Xw^2*∑(Pi-p)^2]
@@ -1224,21 +997,15 @@ print(SEMw)
 CI = SEMw*1.96
 print(CI)
 
-#and CI 
-#min = (1.27*64000+0.85*55000+1.61*454000+1.40*471000+1.46*124000+0.99*62000)/(64000+55000+454000+471000+124000+62000)
-  #min = 1.43
-#max = (2.1*64000+1.65*55000+2.63*454000+2.15*471000+2.37*124000+1.66*62000)/(64000+55000+454000+471000+124000+62000)
-  #max = 2.3
-
 # Create data frame for Switzerland
 data_ch <- data.frame(x = rep(seq(0.01, 1, by = 0.0001)),  
-                      a = rep(c(0.0189804))) #a = population weighted mean of gamma_mean of each WWTP.
+                      a = rep(c(Xw/100))) #a = population weighted mean of gamma_mean of each WWTP.
 
 data_ch_min <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                          a = c(0.01773374)) #a = population weighted mean - CI of weighted mean
+                          a = c(Xw/100-CI/100)) #a = population weighted mean - CI of weighted mean
 
 data_ch_max <- data.frame(x = seq(0.01, 1, by = 0.0001),  
-                          a = c(0.02022706))
+                          a = c(Xw/100+CI/100))
 
 # Calculate Y based on the function Y = a/x
 data_ch$Y <- data_ch$a / data_ch$x
@@ -1251,7 +1018,7 @@ data_ch$Ymin[data_ch$Ymin > 1] <- 1
 data_ch$Ymax[data_ch$Ymax > 1] <- 1
 
 #Plot
-ch <- ggplot(data_ch[data_ch$x >= 0.0189804,], aes(x = x, y = Y)) +
+ch <- ggplot(data_ch[data_ch$x >= Xw/100,], aes(x = x, y = Y)) +
   geom_line(color="black", linewidth=1) +
   geom_ribbon(data=data_ch, 
   aes(ymin = Ymin, ymax = Ymax), fill = "black", alpha = 0.3, colour=NA) +
@@ -1270,7 +1037,7 @@ ch <- ggplot(data_ch[data_ch$x >= 0.0189804,], aes(x = x, y = Y)) +
   theme_minimal()+
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
 
-ch
+print(ch)
 
 ####ARA Altenrhein with CI-------
 # Create a data frame with different values of "a": a=gamma_mean, a=gamma_mean - CI, a=gamma_mean + CI
