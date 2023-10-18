@@ -22,7 +22,7 @@ library(dunn.test)
 
 ##Formatting df-------------------
 #Import datasets 
-setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/esblec-monitor-ww-21-22/data")
+setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/ESBL_ecoli_ww_monitoring/esblec-monitor-ww-21-22/data")
 df <- read.csv("ecoli_counts.csv", header = TRUE)
 df
 
@@ -960,7 +960,7 @@ ggarrange(heatmap_plot,heatmap_plot_loads_ESBL, heatmap_plot_loads_tot, ncol=3, 
 ##Estimate sample size---------------------------
 #Bayesian code to fit log normal distribution to my data
 graphics.off()
-setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/esblec-monitor-ww-21-22/code")
+setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/ESBL_ecoli_ww_monitoring/esblec-monitor-ww-21-22/code")
 source("DBDA2E-utilities.R")
 fileNameRoot="A" 
 library(rjags)
@@ -2705,7 +2705,7 @@ ggarrange(a,b, c, d, e, f,nrow = 2, ncol = 3, labels = c("A", "B", "C", "D","E",
 
 ##CDF, mean and median of Bangladesh ESBL-E.coli percentage in the gut----------------
 #Percentage of ESBL-E. coli out of total E. coli in the gut of children
-setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/esblec-monitor-ww-21-22/data")
+setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/ESBL_ecoli_ww_monitoring/esblec-monitor-ww-21-22/data")
 df_bang <- read.csv("intestinal_carriage_bangladesh.csv", header = TRUE)
 
 # Create empirical CDF data
