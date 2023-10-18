@@ -22,8 +22,8 @@ library(dunn.test)
 
 ##Formatting df-------------------
 #Import datasets 
-setwd("~/switchdrive/Institution/Manuscripts/ESBLEc_Monitoring_Pictures")
-df = read.table("20231011_E_coli_counts.txt", header= TRUE)
+setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/esblec-monitor-ww-21-22/data")
+df <- read.csv("ecoli_counts.csv", header = TRUE)
 df
 
 #Convert the date column to a date format
@@ -2705,8 +2705,8 @@ ggarrange(a,b, c, d, e, f,nrow = 2, ncol = 3, labels = c("A", "B", "C", "D","E",
 
 ##CDF, mean and median of Bangladesh ESBL-E.coli percentage in the gut----------------
 #Percentage of ESBL-E. coli out of total E. coli in the gut of children
-setwd("~/switchdrive/Institution/Manuscripts/ESBLEc_Monitoring_Pictures")
-df_bang = read.table("20231017_bangladesh_intestinalCarriage.txt", header= TRUE)
+setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/esblec-monitor-ww-21-22/data")
+df_bang <- read.csv("intestinal_carriage_bangladesh.csv", header = TRUE)
 
 # Create empirical CDF data
 df_bang$ecdf <- ecdf(df_bang$percentage_esblEc)(df_bang$percentage_esblEc) 
@@ -2722,9 +2722,9 @@ mean_val <- mean(df_bang$percentage_esblEc)
 median_val <- median(df_bang$percentage_esblEc)
 
 # Generate Plot
-ggplot(df_bang, aes(percentage_esblEc)) + 
+cdf=ggplot(df_bang, aes(percentage_esblEc)) + 
   geom_line(aes(y=ecdf, color="Empirical CDF"), size=1) +
-  geom_line(aes(y=lognorm_cdf, color="Lognormal CDF"), linetype="solid", size=0.5) +
+  geom_line(aes(y=lognorm_cdf, color="Lognormal CDF"), linetype="solid", linewidth=0.5) +
   scale_x_log10(labels = scales::comma) +
   theme_minimal() +
   theme(
@@ -2744,3 +2744,5 @@ ggplot(df_bang, aes(percentage_esblEc)) +
                  aes(xintercept = mean_val), linetype = "dotted", color="black", alpha =1)+
   scale_color_manual("Legend", 
                      values = c("Empirical CDF" = "blue", "Lognormal CDF" = "red"))
+
+print(cdf)
