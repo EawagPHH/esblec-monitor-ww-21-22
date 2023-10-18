@@ -960,7 +960,7 @@ ggarrange(heatmap_plot,heatmap_plot_loads_ESBL, heatmap_plot_loads_tot, ncol=3, 
 ##Estimate sample size---------------------------
 #Bayesian code to fit log normal distribution to my data
 graphics.off()
-setwd("C:/Users/Sheena/Desktop/Sample Size")
+setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/esblec-monitor-ww-21-22/code")
 source("DBDA2E-utilities.R")
 fileNameRoot="A" 
 library(rjags)
