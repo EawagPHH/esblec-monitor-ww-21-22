@@ -1,3 +1,4 @@
+# Analyses of ESBL-gene reads----------------------
 ## Load packages--------------------------
 library (ggplot2)
 library(dplyr)
@@ -37,13 +38,7 @@ levels(reads_coli$X3) = list("PDC"="PDC.1","PDC"="PDC.2","VIM"="VIM.1","VIM"= "V
                              "CTX-M8 and 25"="CTX-M8 and 25.1","CTX-M8 and 25"="CTX-M8 and 25.2",
                              "CMY,FOX,MOX"="CMY,FOX,MOX.1","CMY,FOX,MOX"="CMY,FOX,MOX.2","TEM" ="TEM.1","TEM" ="TEM.2", 
                              "CTX-M9"="CTX-M9.1", "CTX-M9"="CTX-M9.2","CTX-M1"="CTX-M1.1", "CTX-M1"="CTX-M1.2")
-
-reads_coli$month=as.factor(reads_coli$month)
-levels(reads_coli$month)=list("November 2021" = "Nov", "December 2021"="Dec", "January 2022" = "Jan",
-                              "February 2022" = "Feb", "March 2022"="Mar", "April 2022"="Apr","May 2022"="May", 
-                              "June 2022"="Jun", "July 2022"="Jul", "2nd August 2022"="Aug2nd", "30th August 2022"="Aug30th", 
-                              "September 2022"="Sep", "October 2022"="Oct")
-
+#Rename the wwtp
 reads_coli$wwtp[which(reads_coli$wwtp=="Altenrhein")] <- "ARA Altenrhein"
 reads_coli$wwtp[which(reads_coli$wwtp=="Lugano")] <- "IDA CDA Lugano"
 reads_coli$wwtp[which(reads_coli$wwtp=="Geneva")] <- "STEP d'Aïre Genève"
@@ -51,202 +46,132 @@ reads_coli$wwtp[which(reads_coli$wwtp=="Laupen")] <- "ARA Sensetal Laupen"
 reads_coli$wwtp[which(reads_coli$wwtp=="Zurich")] <- "ARA Werdhölzli Zürich"
 reads_coli$wwtp[which(reads_coli$wwtp=="Chur")] <- "ARA Chur"
 
+#Rename and reorder the months in the dataframe
+reads_coli$month=as.factor(reads_coli$month)
+levels(reads_coli$month)=list("November 2021" = "Nov", "December 2021"="Dec", "January 2022" = "Jan",
+                              "February 2022" = "Feb", "March 2022"="Mar", "April 2022"="Apr","May 2022"="May", 
+                              "June 2022"="Jun", "July 2022"="Jul", "2nd August 2022"="Aug2nd", "30th August 2022"="Aug30th", 
+                              "September 2022"="Sep", "October 2022"="Oct")
+
+#Assign NA values when the number of reads is 0.
 reads_coli$real_n[reads_coli$real_n == 0] <- NA
 
-#plot with samples on y-axis and genes on x-axis
-ggplot(complete(reads_coli, X2, sample), aes(X3,sample, fill= real_n))+ 
-  geom_tile(colour="white")+
-  scale_fill_gradient(low = "lightblue", high = "blue", na.value = "gray95",  name ='Molecular counts')+
-  theme(axis.text.x = element_text(size=8, angle=90), axis.text.y = element_text(size=2))+
-  xlab("Genes clusters")+
-  ylab("E. coli isolates")
+# Reorder levels of sample based on month
+reads_coli$sample <- factor(reads_coli$sample, 
+                                     levels = unique(reads_coli[order(reads_coli$month), ]$sample))
 
-# Plot with facet by wwtp removing strains with every cluster having real_n=0.
-reads_coli_filtered <- reads_coli %>%
-  filter(!is.na(real_n) & real_n != 0)
+## Summary statistics and plots ------------------------
+### Positive to at least one probe-pair-------------
+#Count how many isolates are positive to at least one probe-pair for at least on gene family
+print(reads_coli %>% 
+        summarise(n_distinct(sample)))
 
-ggplot(data=reads_coli_filtered, aes(sample, X2, fill = real_n)) + 
-  geom_tile(colour = "white") +
-  scale_fill_gradient(low = "lightblue", high = "blue", na.value = "gray95", name = "Molecular counts") +
-  theme(axis.text.x = element_text(size = 6, angle = 90, hjust = 0.5, vjust = 0.5), axis.text.y = element_text(size = 4)) +
-  ylab("Genes clusters") +
-  xlab(expression(paste(" ", italic("E. coli"), "isolates"))) +
-  facet_wrap(~wwtp, ncol = 3, scales = "free_x")
-
-#Calculate how many isolate are positive to each target gene, showing comparisons between wwtps.
-#Considering the two probe-pairs per cluster separately
+#Compute the number of isolates positive to each probe-pair in each wwtp
 result_1 = reads_coli %>%
   filter(real_n > 0) %>%
   group_by(wwtp, X2) %>%
   summarize(unique_samples = n_distinct(sample))
 
-ggplot(result_1, aes(x = X2, y = unique_samples, fill = wwtp)) + 
-  geom_bar(stat = "identity", position = "dodge") +
-  xlab("Target Gene") +
-  ylab(expression(paste("Number of ",italic("E. coli "), "isolates"))) +
-  ggtitle("Counts of each target gene by number of isolates and wwtp") +
-  scale_fill_manual(values = c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00")) +
-  guides(fill = guide_legend(title = "wwtp", nrow = 1)) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  theme(legend.position = "bottom") 
-
-#Calculate how many isolate are positive to each target gene, showing comparisons between Months
-#Considering the two probe-pairs per cluster separately
+#Compute the number of isolates positive to each probe-pair in each month
 result_2 = reads_coli %>%
   filter(real_n > 0) %>%
-  group_by(Month, X2) %>%
+  group_by(month, X2) %>%
   summarize(unique_samples = n_distinct(sample))
 
-ggplot(result_2, aes(x = X2, y = unique_samples, fill = Month)) + 
-  geom_bar(stat = "identity", position = "dodge") +
-  xlab("Target Gene") +
-  ylab(expression(paste("Number of ",italic("E. coli "), "isolates"))) +
-  ggtitle("Counts of each target gene by number of isolates and Month") +
-  scale_fill_manual(values = c("red", "green", "blue", "purple", "orange", "yellow", 
-                                    "black", "gray", "pink", "brown", "turquoise", 
-                                    "darkgreen", "violet")) +
-                                      guides(fill = guide_legend(title = "Month", nrow = 1)) +
-  theme(axis.text.x = element_text(angle=90))+
-  theme(legend.position = "bottom")
-
-#Considering two of the two probe-pairs, meaning all isolates that are positive
-#for BOTH PROBE-PAIR
-#Subset for positive samples to BOTH PROBE PAIRS
-result <- reads_coli %>%  
-  filter(real_n > 0)%>%
-  group_by(X3, sample) %>%
-  filter(n() >= 2) %>%
-  ungroup() 
-
-#Count how many samples 
- result_nSamples %>% 
-  summarise(n_distinct(sample))
-
-# Plot positive strains to both probe-pairs only and facet by wwtp 
-reads_coli_filtered <- result %>%
+# Remove rows where the column real_n has missing values (NA) or where real_n is equal to 0
+reads_coli_filtered=reads_coli %>%
   filter(!is.na(real_n) & real_n != 0)
 
-#Plot with molecular counts
-heatmap=ggplot(data=reads_coli_filtered, aes(sample, X2, fill = real_n)) + 
-  geom_tile(colour = "white") +
-  scale_fill_gradient(low = "lightblue", high = "blue", na.value = "gray95", name = "Molecular counts") +
-  theme(axis.text.x = element_text(size = 6, angle = 90, hjust = 0.5, vjust = 0.5), axis.text.y = element_text(size = 4)) +
-  ylab("Genes clusters") +
-  xlab(expression(paste(" ", italic("E. coli"), "isolates"))) +
-  facet_wrap(~wwtp, ncol = 3, scales = "free_x")
-
-#Plot with presence absence only
-# Specify the desired order of months
-
-heatmap_pa=ggplot(data=reads_coli_filtered, aes(sample, X2)) + 
+# Plot with presence absence of genes positive for at least one probe-pair
+ggplot(data=reads_coli_filtered, aes(sample, X2)) + 
   geom_tile(colour = "black") +
   theme(axis.text.x = element_text(size = 6, angle = 90, hjust = 0.5, vjust = 0.5), axis.text.y = element_text(size = 4)) +
   ylab("Genes clusters") +
   xlab(expression(paste(" ", italic("E. coli"), "isolates"))) +
   facet_wrap(~wwtp, ncol = 3, scales = "free_x")
 
-# Quantify number of isolates positive to both probe pairs of each gene family in each wwtp
-result_wwtp = result %>%   filter(real_n > 0) %>%
-  group_by(wwtp, X3)  %>%
-  summarize(unique_sample = n_distinct(sample))
-
-#
-result_wwtp$unique_sample=as.numeric(result_wwtp$unique_sample)
-result_wwtp$wwtp=as.factor(result_wwtp$wwtp)
-
-barplots=ggplot(result_wwtp, aes(x = X3, y = unique_sample)) +
-  geom_bar(stat = "identity", fill = "black") +
-  xlab("ESBL-gene family") +
-  ylab("n? isolates") +
-  facet_wrap(~wwtp, ncol = 3)+
-  coord_flip()
-
-#Count how many samples positive to 2 PROBE PAIRS in each wwtp for each X3
-result_wwtp = result %>%   filter(real_n > 0) %>%
-  group_by(wwtp, X3)  %>%
-  summarize(unique_sample = n_distinct(sample))
-
-result_X3 = result %>%   filter(real_n > 0) %>% #not needed for plot, important to count number of isolates positive to each gene overall.
-  group_by(X3)  %>%
-  summarize(unique_sample = n_distinct(sample))
-
-#Plotting wwtps on the x axis and Facet-wrap of the same (Number of E. coli isolates)
-ggplot(result_wwtp, aes(x = wwtp, y = unique_samples, fill = X3)) + 
-  geom_bar(stat = "identity", position = "dodge") +
-  xlab("wwtp") +
-  ylab(expression(paste("Number of ",italic("E. coli "), "isolates"))) +
-  #ggtitle("Counts of each target gene by number of isolates and wwtp") +
-  scale_fill_manual(values = c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00",
-                                        "gray", "red3", "purple", "lightgreen", "gray25", "coral4",
-                                        "pink", "lightblue", "darkgreen", "blue4", "black", "orange4")) +
-                                          guides(fill = guide_legend(title = "ESBL-genes clusters", nrow = 1)) +
-  theme(axis.text.x =  element_text(size = 10, angle=0),
-        legend.position = "right",
-        legend.box = "vertical",
-        legend.direction = "vertical",
-        legend.key.size = unit(0.5, "cm"),
-        legend.text.align = 0) +
-  guides(fill = guide_legend(title = "ESBL-genes clusters", ncol=2, byrow = TRUE))+
-  facet_wrap(~wwtp, scales = "free_x") 
-
-#Calculate percentage of how many samples positive to 2 PROBE PAIRS in each wwtp for each X3
-result_wwtp_per = result %>% 
-  filter(real_n > 0) %>%
-  group_by(wwtp, X3)  %>%
-  summarize(unique_samples = n_distinct(sample))%>%
-  mutate(percentage = unique_samples / 39 * 100)
-
-#Plotting wwtps on the x axis and Facet-wrap of the same (% of E. coli isolates)
-ggplot(result_wwtp_per, aes(x = wwtp, y = percentage, fill = X3)) + 
-  geom_bar(stat = "identity", position = "dodge") +
-  xlab("") +
-  ylab(expression(paste("Percentage of ",italic("E. coli "), "isolates (%)"))) +
-  #ggtitle("Counts of each target gene by number of isolates and wwtp") +
-  scale_fill_manual(values = c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00",
-                                        "gray", "red3", "purple", "lightgreen", "gray25", "coral4",
-                                        "pink", "lightblue", "darkgreen", "blue4", "black", "orange4")) +
-                                          guides(fill = guide_legend(title = "ESBL-genes clusters", nrow = 1)) +
-  theme(axis.text.x =  element_blank(), axis.ticks.x = element_blank(),
-        legend.position = "right",
-        legend.box = "vertical",
-        legend.direction = "vertical",
-        legend.key.size = unit(0.5, "cm"),
-        legend.text.align = 0) +
-  guides(fill = guide_legend(title = "ESBL-genes clusters", ncol=2, byrow = TRUE))+
-  facet_wrap(~wwtp, scales = "free_x")
-
-#Count how many samples positive to 2 PROBE PAIRS in each Month for each X3
+### Positive only to both probe-pairs of same gene family-----------
+#Subset for isolates positive to both probe pairs 
 result <- reads_coli %>%  
   filter(real_n > 0)%>%
   group_by(X3, sample) %>%
   filter(n() >= 2) %>%
   ungroup() 
-result_MONTH <- reads_coli%>%
-  group_by(Month, X3) %>%
-  summarize(positive_samples = n())
 
-result_MONTH = result%>%
-  group_by(Month, X3)  %>%
-  summarize(unique_samples = n_distinct(sample))
+#Count how many isolates are positive to both probe pairs for at least one gene family
+print(result %>% 
+  summarise(n_distinct(sample)))
 
-#Plotting MONTHS on the x axis and Facet-wrap of the same (Number of E. coli isolates)
-ggplot(result_MONTH, aes(x = Month, y = unique_samples, fill = X3)) + 
+# Compute the number of isolates positive to both probe pairs of each gene family in each wwtp
+result_wwtp = result %>% 
+  filter(real_n > 0) %>%
+  group_by(wwtp, X3)  %>%
+  summarize(unique_sample = n_distinct(sample))%>%
+  mutate(percentage = unique_sample / 39 * 100)
+
+# Compute the number of isolates positive to both probe pairs of each gene family combining wwtp
+result_X3 = result %>%   
+  filter(real_n > 0) %>%  
+  group_by(X3)  %>%
+  summarize(unique_sample = n_distinct(sample))%>%
+  mutate(percentage = unique_sample / 234 * 100)
+
+# Compute the number of isolates positive to both probe pairs of each gene family in each month combining wwtp
+result_month = result%>%
+  filter(real_n > 0) %>%
+  group_by(month, X3)  %>%
+  summarize(unique_sample = n_distinct(sample))%>%
+  mutate(percentage = unique_sample / 18 * 100)
+
+# Remove rows where the column real_n has missing values (NA) or where real_n is equal to 0
+reads_coli_filtered=result %>%
+  filter(!is.na(real_n) & real_n != 0)
+
+#Plot with presence absence of genes positive for both probe-pairs
+ggplot(data=reads_coli_filtered, aes(sample, X2)) + 
+  geom_tile(colour = "black") +
+  theme(axis.text.x = element_text(size = 6, angle = 90, hjust = 0.5, vjust = 0.5), axis.text.y = element_text(size = 4)) +
+  ylab("Genes clusters") +
+  xlab(expression(paste(" ", italic("E. coli"), "isolates"))) +
+  facet_wrap(~wwtp, ncol = 3, scales = "free_x")
+
+#Format result_wwtp df to have numeric number of samples and wwtp as factor
+result_wwtp$unique_sample=as.numeric(result_wwtp$unique_sample)
+result_wwtp$wwtp=as.factor(result_wwtp$wwtp)
+
+#Plot the number of isolates positive to both probe-pair of each gene-family and facet by wwtp
+ggplot(result_wwtp, aes(x = X3, y = unique_sample)) +
+  geom_bar(stat = "identity", fill = "black") +
+  xlab("ESBL-gene family") +
+  ylab("n° isolates") +
+  facet_wrap(~wwtp, ncol = 3)+
+  coord_flip()
+
+#Plot the number of isolates positive to both probe-pair of each gene-family and facet by wwtp, colourcoded
+ggplot(complete(result_wwtp,X3), aes(x = X3, y = unique_sample, fill = X3)) + 
   geom_bar(stat = "identity", position = "dodge") +
-  xlab("Month") +
+  xlab("ESBL-gene family") +
   ylab(expression(paste("Number of ",italic("E. coli "), "isolates"))) +
-  #ggtitle("Counts of each target gene by number of isolates and Month") +
   scale_fill_manual(values = c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00",
                                         "gray", "red3", "purple", "lightgreen", "gray25", "coral4",
                                         "pink", "lightblue", "darkgreen", "blue4", "black", "orange4")) +
-                                          guides(fill = guide_legend(title = "ESBL-genes clusters", nrow = 1)) +
-  theme(axis.text.x =  element_text(size = 10, angle=0),
-        legend.position = "right",
-        legend.box = "vertical",
-        legend.direction = "vertical",
-        legend.key.size = unit(0.5, "cm"),
-        legend.text.align = 0) +
-  guides(fill = guide_legend(title = "ESBL-genes clusters", ncol=2, byrow = TRUE))+
-  facet_wrap(~Month, scales = "free_x") 
+  theme(axis.text.x =  element_text(size = 7, angle=90, hjust = 1),
+        legend.position = "none") +
+  facet_wrap(~wwtp) 
+
+#Plotting MONTHS on the x axis and Facet-wrap of the same (Number of E. coli isolates)
+ggplot(result_month, aes(x = X3, y = percentage, fill = X3)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  xlab("ESBL-gene family") +
+  ylab(expression(paste("Percentage of ESBL-",italic("E. coli "), "isolates (%)"))) +
+  scale_fill_manual(values = c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00",
+                                        "gray", "red3", "purple", "lightgreen", "gray25", "coral4",
+                                        "pink", "lightblue", "darkgreen", "blue4", "black", "orange4")) +
+  theme(axis.text.x =  element_text(size = 10, angle=90, hjust=1, colour = "black"),
+        axis.text.y =  element_text(size = 10, angle=0, hjust=1, colour = "black"),
+        strip.text = element_text(size = 14),
+        legend.position = "none") +
+  facet_wrap(~month) 
 
 #Calculate percentage of how many samples positive to 2 PROBE PAIRS in each MONTH for each X3
 result_MONTH_per = result %>%
