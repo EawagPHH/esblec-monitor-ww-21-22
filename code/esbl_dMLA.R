@@ -10,7 +10,7 @@ library(dplyr)
 
 ## Formatting df---------------------------
 #Import dataset
-setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/ESBL_ecoli_ww_monitoring")
+setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/ESBL_ecoli_ww_monitoring/esblec-monitor-ww-21-22/data")
 reads_coli <- read.csv("reads_counts.csv", header = TRUE)
 
 #Rename ESBL-gene families and list them from most to least abundant
