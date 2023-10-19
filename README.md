@@ -36,7 +36,7 @@ The process.nf file is a script written in Nextflow. It allows to process the ra
 The script can be run through the local terminal by typing: **nextflow process.nf**
 Nextflow needs to be installed before, as well as the dependencies required. 
 
-The directory in which the script should be run is the one corresponding to "$baseDir/" in the first line of the script. Data are stored in a folder named "raw", that is nested in a folder named "data" ("$baseDir/data/raw"). 
+The directory in which the script should be run is the one corresponding to "baseDir/" in the first line of the script. Data are stored in a folder named raw, that is nested in a folder named data ($baseDir/data/raw). 
 
 ### esbl_dMLA.R
 The esbl_dMLA.R file contains the code to compute the overall statistics and the plots related to the dMLA results proposed in the manuscript. 
