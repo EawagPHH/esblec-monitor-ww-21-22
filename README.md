@@ -1,5 +1,5 @@
 # ESBL-_E. coli_ monitoring in WW
-## code 
+## codes 
 ### analyses.R 
 The analyses.R file that allows to reproduce all the figures, tables and statistical tests within the main manuscript and within the supplementary material. 
 
@@ -30,9 +30,32 @@ The DBDA2E-utilities.R file contains the packages required to estimate the sampl
 
 The file is called by the main code file analyses.R if stored in the correct working directory. 
 
+### process.nf
+The process.nf file is a script written in Nextflow. It allows to process the raw sequencing data and to obtain a final .csv file containing the number of reads for each target (ESBL-gene family) in each sample sequenced (barcode). 
+
+The script can be run through the local terminal by typing: **nextflow process.nf**
+Nextflow needs to be installed before, as well as the dependencies required. 
+
+The directory in which the script should be run is the one corresponding to "$baseDir/" in the first line of the script. Data are stored in a folder named "raw", that is nested in a folder named "data" ("$baseDir/data/raw"). 
+
+### esbl_dMLA.R
+The esbl_dMLA.R file contains the code to compute the overall statistics and the plots related to the dMLA results proposed in the manuscript. 
+
+The code is subdivided in 4 main chapters:
+1. Load packages
+2. Formatting df
+3. Summary statistics
+4. Plots 
+
+In order to run the whole code, it is essential to:
+- install and load the required packages running the lines 3:9
+- format the df running the lines 11:62
+
+The working directory is set at line 13 and needs to be changed depending on the user. It contains the file **reads_counts.csv**.
+
 ## data
 ### ecoli_counts.csv
-The file ecoli_counts.csv contains all the data necessarity to run the first 6 chapters of the analyses.R code (all except the analyses of the intestinal carriage in Bangladesh). 
+The file ecoli_counts.csv contains all the data necessary to run the first 6 chapters of the analyses.R code (all except the analyses of the intestinal carriage in Bangladesh). 
 
 Variables in the data file (_na_ indicates that data are not available for that observation and/or that variable):
 - **date**: dd_mm_yyyy
@@ -61,3 +84,19 @@ Variables in the data file:
 - **totEcoli_CFUs_gram_feces**: number of colony forming units of total _E. coli_ detected in 1 gram of feces 
 - **esblEcoli_CFUs_gram_feces**: number of colony forming units of ESBL-_E. coli_ detected in 1 gram of feces
 - **percentage_esblEc**: esblEcoli_CFUs_gram_feces/totEcoli_CFUs_gram_feces*100
+
+### reads_counts.csv
+The file reads_counts.csv derives from the file sequencing_targets.csv. Variables (columns) were added and levels were modified in excel manually. 
+
+Variables in the data file:
+- **sample**: name of the ESBL-_E. coli_ isolate in the format wwtp_month_#, where # is either 1, 2, or 3
+- **month**: month in which the sample was isolated from wastewater
+- **dMLA_set**: set in which sample was sequenced, either 1, 2, or 3
+- **wwtp**: wastewater treatment plant from where sample was isolated
+- **well**: well of the 96-well plate in which the sample undergone dMLA, each well is associated with a unique barcode (listed in the file sequencing_targets.csv)
+- **X2**: target ESBL-gene family in the format of C#aT or C#bT, where # is a number and a, b refer to one of the two probe-pairs targeting the same ESBL-gene family
+- **n**: number of unique molecular counts for the specific probe-pair in each sample
+- **threshold**: threshold calculated for each probe target, as the sum of the mean and three times the standard deviation of unique molecules from false positive signals
+- **real_n**: n minus threshold
+
+
