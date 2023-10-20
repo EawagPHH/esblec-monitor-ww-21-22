@@ -7,7 +7,7 @@ library(tidyr)
 
 ##Formatting df---------------
 #Import dataset
-setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/ESBL_ecoli_ww_monitoring")
+setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/ESBL_ecoli_ww_monitoring/esblec-monitor-ww-21-22/data")
 reads <- read.csv("sequencing_targets.csv", header = TRUE)
 reads
 
