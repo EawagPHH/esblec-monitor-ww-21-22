@@ -2703,6 +2703,174 @@ f
 
 ggarrange(a,b, c, d, e, f,nrow = 2, ncol = 3, labels = c("A", "B", "C", "D","E", "F"))
 
+###Percentage in the gut as assumed---------------------------
+####Arithmetic scale-----------------------------------
+# Specify estimates, where c is the assumed percentage of ESBL-E.coli out of total E. coli in the gut.
+c0=0.05
+c1=0.10
+c2=0.1928
+c3=0.32
+c4=0.40
+c5=0.50
+c6=0.60
+c7=0.80
+c8=0.90
+ww= 1.9
+
+# Generate x values from 0 to 100 with points every 0.05
+x_values <- seq(0, 100, by = 0.001)
+
+# Create a dataframe with x values and constant variables c0 to c8
+data_ch_g <- data.frame(
+  x = rep(x_values),  # Repeat each x value 8 times
+  c0 = rep(c0, length(x_values)),
+  c1 = rep(c1, length(x_values)),  # Repeat constant c1 for each x value
+  c2 = rep(c2, length(x_values)),  # Repeat constant c2 for each x value
+  c3 = rep(c3, length(x_values)),  # Repeat constant c3 for each x value
+  c4 = rep(c4, length(x_values)),  # Repeat constant c4 for each x value
+  c5 = rep(c5, length(x_values)),  # Repeat constant c5 for each x value
+  c6 = rep(c6, length(x_values)),  # Repeat constant c6 for each x value
+  c7 = rep(c7, length(x_values)),  # Repeat constant c7 for each x value
+  c8 = rep(c8, length(x_values))   # Repeat constant c8 for each x value
+)
+
+# Calculate Y based on the function Y = x/c
+data_ch_g$Y0 <- data_ch_g$x / data_ch_g$c0
+data_ch_g$Y1 <- data_ch_g$x / data_ch_g$c1
+data_ch_g$Y2 <- data_ch_g$x / data_ch_g$c2
+data_ch_g$Y3 <- data_ch_g$x / data_ch_g$c3
+data_ch_g$Y4 <- data_ch_g$x / data_ch_g$c4
+data_ch_g$Y5 <- data_ch_g$x / data_ch_g$c5
+data_ch_g$Y6 <- data_ch_g$x / data_ch_g$c6
+data_ch_g$Y7 <- data_ch_g$x / data_ch_g$c7
+data_ch_g$Y8 <- data_ch_g$x / data_ch_g$c8
+
+#Plot
+# Reshape the data from wide to long format
+data_ch_long <- data_ch_g %>%
+  gather(key = "Y_variable", value = "Y_value", Y0:Y8)
+
+# Define custom colors for each Y_variable
+custom_colors <- c("Y0" = "black","Y1" = "black", "Y2" = "black", "Y3" = "black", "Y4" = "black",
+                   "Y5" = "black", "Y6" = "black", "Y7" = "black", "Y8" = "black")
+
+# Specify vector of Y_values for horizontal lines
+y_values_to_intercept <- c(9.854772, 5.937500)
+
+# Create the plot with manual color specification and horizontal lines
+ch <- ggplot(data_ch_long, aes(x = x, y = Y_value, colour = Y_variable)) +
+  geom_line(linewidth = 1) +
+  labs(
+    x = expression(paste("Prevalence of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in wastewater (%)")),
+    y = expression(paste("Prevalence of ESBL-", italic("E. coli"), " carriage within the community (%)")),
+    color = "Y variable"
+  ) +
+ scale_y_continuous(
+    limits = c(0, 100),
+    breaks = seq(0, 100, by = 20)
+  ) +
+ scale_x_continuous(
+ limits = c(0, 20),
+ breaks = seq(0, 20, by = 4)
+ ) +
+  scale_colour_manual(values = custom_colors) +  
+  geom_vline(xintercept = ww, linetype = "dashed", color = "red", alpha = 0.8) +
+  geom_hline(yintercept = y_values_to_intercept, linetype = "dashed", color = "darkgrey", alpha = 1) +
+  annotate("text", x = ww, y = 0, label = "1.9", vjust = 0, hjust = 0.5, color = "red", size = 3) + 
+  annotate("text", x = 0, y = y_values_to_intercept, label = paste(round(y_values_to_intercept, 1)), vjust = -1, hjust = -0.2, color = "darkgrey", size = 3) +  # Annotation for the specified Y values at x=1.9
+  ggtitle("Switzerland") +
+  theme_minimal() +
+  theme(
+    legend.position = "none", 
+    plot.title = element_text(hjust = 0.5)
+  )
+
+ch
+
+####Logscale-----------------------------
+# Specify estimates, where c is the assumed percentage of ESBL-E.coli out of total E. coli in the gut.
+c0=0.05
+c1=0.10
+c2=0.1928
+c3=0.32
+c4=0.40
+c5=0.50
+c6=0.60
+c7=0.80
+c8=0.90
+ww= 0.019
+
+# Generate x values from 0 to 100 with points every 0.05
+x_values <- seq(0, 1, by = 0.001)
+
+# Create a dataframe with x values and constant variables c0 to c8
+data_ch_g <- data.frame(
+  x = rep(x_values),  # Repeat each x value 8 times
+  c0 = rep(c0, length(x_values)),
+  c1 = rep(c1, length(x_values)),  # Repeat constant c1 for each x value
+  c2 = rep(c2, length(x_values)),  # Repeat constant c2 for each x value
+  c3 = rep(c3, length(x_values)),  # Repeat constant c3 for each x value
+  c4 = rep(c4, length(x_values)),  # Repeat constant c4 for each x value
+  c5 = rep(c5, length(x_values)),  # Repeat constant c5 for each x value
+  c6 = rep(c6, length(x_values)),  # Repeat constant c6 for each x value
+  c7 = rep(c7, length(x_values)),  # Repeat constant c7 for each x value
+  c8 = rep(c8, length(x_values))   # Repeat constant c8 for each x value
+)
+
+# Calculate Y based on the function Y = x/c
+data_ch_g$Y0 <- data_ch_g$x / data_ch_g$c0
+data_ch_g$Y1 <- data_ch_g$x / data_ch_g$c1
+data_ch_g$Y2 <- data_ch_g$x / data_ch_g$c2
+data_ch_g$Y3 <- data_ch_g$x / data_ch_g$c3
+data_ch_g$Y4 <- data_ch_g$x / data_ch_g$c4
+data_ch_g$Y5 <- data_ch_g$x / data_ch_g$c5
+data_ch_g$Y6 <- data_ch_g$x / data_ch_g$c6
+data_ch_g$Y7 <- data_ch_g$x / data_ch_g$c7
+data_ch_g$Y8 <- data_ch_g$x / data_ch_g$c8
+
+#Plot
+# Reshape the data from wide to long format
+data_ch_long <- data_ch_g %>%
+  gather(key = "Y_variable", value = "Y_value", Y0:Y8)
+
+# Define custom colors for each Y_variable
+custom_colors <- c("Y0" = "black","Y1" = "black", "Y2" = "black", "Y3" = "black", "Y4" = "black",
+                   "Y5" = "black", "Y6" = "black", "Y7" = "black", "Y8" = "black")
+
+# Specify vector of Y_values for horizontal lines
+y_values_to_intercept <- c(0.09854772, 0.05937500)
+
+# Create the plot with manual color specification and horizontal lines
+ch <- ggplot(data_ch_long, aes(x = x, y = Y_value, colour = Y_variable)) +
+  geom_line(linewidth = 1) +
+  labs(
+    x = expression(paste("Prevalence of ESBL-", italic("E. coli"), " out of total ", italic("E. coli"), " in wastewater")),
+    y = expression(paste("Prevalence of ESBL-", italic("E. coli"), " carriage within the community")),
+    color = "Y variable"
+  ) +
+  scale_y_continuous(
+    limits = c(0, 1),
+    breaks = seq(0, 1, by = 0.2)
+  ) +
+  scale_x_continuous(
+    limits = c(0, 0.2),
+    breaks = c(0, 0.01, 0.1, 0.2),
+    labels = c(0, 0.01, 0.1, 0.2)
+  ) +
+  scale_colour_manual(values = custom_colors) +  
+  geom_vline(xintercept = ww, linetype = "dashed", color = "red", alpha = 0.8) +
+  geom_hline(yintercept = y_values_to_intercept, linetype = "dashed", color = "darkgrey", alpha = 1) +
+  annotate("text", x = ww, y = 0, label = "0.019", vjust = 0, hjust = 0.5, color = "red", size = 3) + 
+  annotate("text", x = 0, y = y_values_to_intercept, label = paste(round(y_values_to_intercept, 3)), vjust = -1, hjust = -0.2, color = "darkgrey", size = 3) +  # Annotation for the specified Y values at x=1.9
+  ggtitle("Switzerland") +
+  theme_minimal() +
+  theme(
+    legend.position = "none", 
+    plot.title = element_text(hjust = 0.5)
+  )
+
+ch
+
 ##CDF, mean and median of Bangladesh ESBL-E.coli percentage in the gut----------------
 #Percentage of ESBL-E. coli out of total E. coli in the gut of children
 setwd("/Users/conforsh/switchdrive/Institution/Manuscripts/ESBL_ecoli_ww_monitoring/esblec-monitor-ww-21-22/data")
@@ -2746,3 +2914,4 @@ cdf=ggplot(df_bang, aes(percentage_esblEc)) +
                      values = c("Empirical CDF" = "blue", "Lognormal CDF" = "red"))
 
 print(cdf)
+
